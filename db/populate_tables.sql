@@ -11,11 +11,13 @@ INSERT INTO "genre" ("name") VALUES
   ('blues'),
   ('classical');
 
+
 -- Skill levels
 INSERT INTO "skill_level" ("level") VALUES
   ('beginner'),
   ('intermediate'),
   ('advanced');
+
 
 -- Insert instrument names
 INSERT INTO "instrument" ("name") VALUES
@@ -29,6 +31,7 @@ INSERT INTO "instrument" ("name") VALUES
   ('bass guitar'),
   ('clarinet'),
   ('harp');
+
 
 -- Insert brand names for instruments
 INSERT INTO "brand" ("name") VALUES
@@ -51,6 +54,7 @@ INSERT INTO "brand" ("name") VALUES
   ('gemeinhardt'),    -- Known for student and intermediate flutes
   ('muramatsu');      -- Known for professional flutes, especially in the classical music world
 
+
 -- Define instrument prices and match instrument names with their IDs using a subquery
 INSERT INTO "instrument_price_list" ("instrument_id", "price_per_month", "effective_date")
 SELECT "i"."id", "p"."price_per_month", TO_DATE("p"."effective_date", 'YYYY-MM-DD')
@@ -68,6 +72,7 @@ FROM (
     ('harp', 80.00, '2023-11-23')
 ) AS "p" ("instrument_name", "price_per_month", "effective_date")
 JOIN "instrument" AS "i" ON "p"."instrument_name" = "i"."name";
+
 
 -- Define rentable instruments and match them with instrument and brand IDs (five of each)
 INSERT INTO "rentable_instrument" ("instrument_id", "brand_id")
@@ -330,6 +335,7 @@ VALUES
 INSERT INTO "student" ("person_id")
 SELECT "id" FROM "person" WHERE "personal_identity_number" = '19914001-1212';
 
+
 -- Populate the "sibling" table based on students with the same last name and address
 INSERT INTO "sibling" ("sibling_1", "sibling_2")
 SELECT DISTINCT s1."id", s2."id"
@@ -342,6 +348,8 @@ WHERE p1."last_name" = p2."last_name"
   AND p1."zip" = p2."zip"
   AND p1."city" = p2."city";
 
+
+-- populate contact_person
 INSERT INTO "contact_person" ("first_name", "last_name", "phone", "email")
 VALUES
     ('John', 'Doe', '+467123456789', 'john.doe@gmail.com'),
@@ -358,6 +366,7 @@ VALUES
     ('Emma', 'Nilsson', '+467495546774', 'emma.nilsson@gmail.com'),
     ('Ritva', 'Björk', '+467445596772', 'ritva.bjork@gmail.com');
 
+
 -- Populate the "student_contact_person" table with parent, guardian, and grandparent relationships
 INSERT INTO "student_contact_person" ("student_id", "contact_person_id", "relation")
 VALUES
@@ -370,79 +379,67 @@ VALUES
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Liam' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Andersson'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Mia' AND "last_name" = 'Björk')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Björk'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Lucas' AND "last_name" = 'Björk')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Björk'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Ella' AND "last_name" = 'Larsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Larsson'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Noah' AND "last_name" = 'Larsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Larsson'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Lilly' AND "last_name" = 'Karlsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Karlsson'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Charlie' AND "last_name" = 'Karlsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Karlsson'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Sophia' AND "last_name" = 'Larsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Henrik' AND "last_name" = 'Larsson'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Aiden' AND "last_name" = 'Larsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Henrik' AND "last_name" = 'Larsson'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Mila' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ragnar' AND "last_name" = 'Andersson'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Henry' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ragnar' AND "last_name" = 'Andersson'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Elsa' AND "last_name" = 'Nilsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Emma' AND "last_name" = 'Nilsson'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Oscar' AND "last_name" = 'Nilsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Emma' AND "last_name" = 'Nilsson'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Agnes' AND "last_name" = 'Björk')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ritva' AND "last_name" = 'Björk'), 
      'Parent'),
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Viktor' AND "last_name" = 'Björk')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ritva' AND "last_name" = 'Björk'), 
      'Parent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'William' AND "last_name" = 'Gustafsson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'John' AND "last_name" = 'Doe'), 
      'Grandparent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Selma' AND "last_name" = 'Lundqvist')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Jane' AND "last_name" = 'Smith'), 
      'Grandparent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Isabella' AND "last_name" = 'Eriksson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Robert' AND "last_name" = 'Johnson'), 
      'Grandparent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Oliver' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Sarah' AND "last_name" = 'Wilson'), 
      'Grandparent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Emma' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Sarah' AND "last_name" = 'Wilson'), 
      'Grandparent'),
-
      ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Liam' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Sarah' AND "last_name" = 'Wilson'), 
      'Grandparent');
+
 
 -- Populate the "ensemble_price" table with ensemble prices and genres
 INSERT INTO "ensemble_price" ("genre_id", "price", "effective_date")
@@ -533,14 +530,13 @@ JOIN "instrument" AS "i" ON "p"."instrument_name" = "i"."name"
 JOIN "skill_level" AS "s" ON "p"."skill_level_name" = "s"."level"
 WHERE "i"."name" NOT IN ('harp', 'clarinet');
 
--- Populate the "instructor_instrument" table with parent, guardian, and grandparent relationships
+-- Populate the "instructor_instrument" table with parent, guardian, and grandparent relationships TODO LOL
 INSERT INTO "instructor_instrument" ("instructor_id", "instrument_id")
 VALUES
      ((SELECT "id" FROM "instructor" 
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Erik' AND "last_name" = 'Eriksson')),
      (SELECT "id" FROM "instrument" WHERE "name" = 'piano')),
-
      ((SELECT "id" FROM "instructor"  
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Erik' AND "last_name" = 'Eriksson')), 
@@ -549,7 +545,6 @@ VALUES
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Erik' AND "last_name" = 'Eriksson')),
      (SELECT "id" FROM "instrument" WHERE "name" = 'harp')),
-
      ((SELECT "id" FROM "instructor"  
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Anna' AND "last_name" = 'Andersson')),
@@ -558,7 +553,6 @@ VALUES
         WHERE "person_id" = (
             SELECT "id" FROM "person"  WHERE "first_name" = 'Anna' AND "last_name" = 'Andersson')),
      (SELECT "id" FROM "instrument" WHERE "name" = 'piano')),
-
      ((SELECT "id" FROM "instructor"  
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
@@ -579,7 +573,6 @@ VALUES
         WHERE "person_id" = (
             SELECT "id" FROM "person"  WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
      (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet')),
-
      ((SELECT "id" FROM "instructor"  
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Karin' AND "last_name" = 'Karlsson')),
@@ -592,7 +585,6 @@ VALUES
         WHERE "person_id" = (
             SELECT "id" FROM "person"  WHERE "first_name" = 'Karin' AND "last_name" = 'Karlsson')),
      (SELECT "id" FROM "instrument" WHERE "name" = 'guitar')),
-
      ((SELECT "id" FROM "instructor"  
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Göran' AND "last_name" = 'Gustafsson')),
@@ -609,3 +601,173 @@ VALUES
         WHERE "person_id" = (
             SELECT "id" FROM "person" WHERE "first_name" = 'Göran' AND "last_name" = 'Gustafsson')),
      (SELECT "id" FROM "instrument" WHERE "name" = 'bass guitar'));
+
+
+-- populate "session" table
+INSERT INTO "session" ("start_time", "end_time")
+VALUES
+    ('2023-02-03 14:00:00', '2023-02-03 15:00:00'), --group lesson, guitar, beginner
+    ('2023-01-15 14:30:00', '2023-01-15 15:30:00'), --group lesson, guitar, advanced
+    ('2023-02-28 14:15:00', '2023-02-28 15:15:00'), --group lesson, trumpet, intermediate
+    ('2023-03-10 17:45:00', '2023-03-10 18:45:00'), --group lesson, violin, advanced
+    ('2023-04-05 16:30:00', '2023-04-05 17:30:00'), --individual, piano, beginner
+    ('2023-05-20 14:45:00', '2023-05-20 15:45:00'), --individual, drums, intermediate
+    ('2023-04-08 15:20:00', '2023-04-08 16:20:00'), --individual, flute, advanced
+    ('2023-10-12 18:00:00', '2023-10-12 19:00:00'), --individual, bass guitar, beginner
+    ('2023-03-25 14:10:00', '2023-03-25 15:10:00'), --individual, clarinet, beginner
+    ('2023-09-03 16:30:00', '2023-09-03 17:30:00'), --individual, drums, beginner
+    ('2023-10-15 15:45:00', '2023-10-15 16:45:00'), --individual, trumpet, intermediate
+    ('2023-11-20 14:30:00', '2023-11-20 15:30:00'), --individual, clarinet, advanced
+    ('2023-11-05 16:20:00', '2023-11-05 17:20:00'), --individual, violin, intermediate
+    ('2023-01-08 18:00:00', '2023-01-08 19:00:00'), --individual, saxophone, advanced
+    ('2023-02-17 14:45:00', '2023-02-17 15:45:00'), --individual, drums, beginner
+    ('2023-03-21 15:30:00', '2023-03-21 16:30:00'), --individual, drums, advanced
+    ('2023-04-02 17:15:00', '2023-04-02 18:15:00'), --ensemble, blues
+    ('2023-05-10 16:00:00', '2023-05-10 17:00:00'), --ensemble, rock
+    ('2023-09-28 14:30:00', '2023-09-28 15:30:00'), --ensemble, jazz
+    ('2023-04-15 17:00:00', '2023-04-15 18:00:00'), --ensemble, rock
+    ('2023-12-02 14:00:00', '2023-12-02 15:00:00'), --ensemble, rock
+    ('2023-12-02 15:30:00', '2023-12-02 16:30:00'), --ensemble, jazz
+    ('2023-12-03 16:45:00', '2023-12-03 17:45:00'), --ensemble, blues
+    ('2023-12-04 18:00:00', '2023-12-04 19:00:00'), --ensemble, classical
+    ('2023-12-04 19:15:00', '2023-12-04 20:15:00'); --ensemble, rock
+
+-- populate group lesson
+INSERT INTO "group_lesson" ("session_id", "instrument_id", "skill_level_id", "min_nr_of_students", "max_nr_of_students")
+VALUES
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-02-03 14:00:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'guitar'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner'),
+     5, 10),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-01-15 14:30:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'guitar'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced'),
+     5, 15),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-02-28 14:15:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'trumpet'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate'),
+     5, 15),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-03-10 17:45:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'violin'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced'),
+     5, 20);
+
+-- populate individual lesson
+INSERT INTO "individual_lesson" ("session_id", "instrument_id", "skill_level_id")
+VALUES
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-05 16:30:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'piano'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-05-20 14:45:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-08 15:20:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'flute'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-10-12 18:00:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'bass guitar'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-03-25 14:10:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-09-03 16:30:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-10-15 15:45:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'trumpet'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-11-20 14:30:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-11-05 16:20:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'violin'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-01-08 18:00:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'saxophone'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-02-17 14:45:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-03-21 15:30:00'),
+     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
+     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced'));
+
+-- populate ensemble
+INSERT INTO "ensemble" ("session_id", "genre_id", "min_nr_of_students", "max_nr_of_students")
+VALUES
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-02 17:15:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'blues'),
+     3, 10),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-05-10 16:00:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
+     3, 6),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-09-28 14:30:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'jazz'),
+     3, 8),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-15 17:00:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
+     3, 6),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-02 14:00:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
+     3, 6),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-02 15:30:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'jazz'),
+     3, 5),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-03 16:45:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'blues'),
+     2, 6),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-04 18:00:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'classical'),
+     3, 10),
+    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-04 19:15:00'),
+     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
+     3, 8);
+
+-- populate instructor_booking
+INSERT INTO "instructor_booking" ("session_id", "instructor_id")
+VALUES
+    (61, 16),
+    (62, 19),
+    (63, 18),
+    (64, 19),
+    (65, 17),
+    (66, 20),
+    (67, 18),
+    (68, 20),
+    (69, 18),
+    (70, 17),
+    (71, 18),
+    (72, 18),
+    (73, 19),
+    (74, 18),
+    (75, 17),
+    (76, 17),
+    (77, 20),
+    (78, 16),
+    (79, 18),
+    (80, 20);
+
+
+-- populate student_booking
+INSERT INTO "student_booking" ("session_id", "student_id")
+VALUES
+    (101, 64),
+    (102, 65),
+    (103, 66),
+    (104, 67),
+    (105, 68),
+    (101, 69),
+    (101, 70),
+    (101, 71),
+    (102, 72),
+    (102, 73),
+    (102, 74),
+    (102, 75),
+    (103, 76),
+    (103, 77),
+    (103, 78),
+    (104, 79),
+    (104, 64),
+    (105, 80),
+    (105, 81),
+    (105, 72);
