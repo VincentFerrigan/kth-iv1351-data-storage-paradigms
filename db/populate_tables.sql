@@ -1,14 +1,16 @@
 -- FUNCTIONS
+
 -- Insert new person and return their id.
+-- OI : Should I make it a procedure!???????????? Don't let function insert!!
 CREATE OR REPLACE FUNCTION fn_add_person(
-    pid CHAR(13),
-    firstName VARCHAR(100),
-    lastName VARCHAR(100),
-    street VARCHAR(100),
-    zip VARCHAR(10),
-    city VARCHAR(100),
-    phone VARCHAR(50),
-    email VARCHAR(100)
+      pid CHAR(13)
+    , firstName VARCHAR(100)
+    , lastName VARCHAR(100)
+    , street VARCHAR(100)
+    , zip VARCHAR(10)
+    , city VARCHAR(100)
+    , phone VARCHAR(50)
+    , email VARCHAR(100)
     ) RETURNS INT as $$
 
 -- Variable to hold the newly inserted person ID
@@ -63,6 +65,147 @@ BEGIN
     LIMIT 1;
 
     RETURN instructorID;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Randomly pick an instructor id based on free time slot
+CREATE OR REPLACE FUNCTION fn_instructor_id(
+    startTime TIMESTAMP
+    , endTime TIMESTAMP-- or duration
+) RETURNS INT AS $$
+DECLARE
+    instructorID INT;
+BEGIN
+    SELECT "id"
+    INTO instructorID
+    FROM "instructor" i
+      WHERE NOT EXISTS (
+          SELECT 1
+          FROM "session" s
+          WHERE s."instructor_id" = i."id"
+            AND ((startTime, endTime) OVERLAPS (s."start_time", s."end_time"))
+      )
+    ORDER BY RANDOM()
+    LIMIT 1;
+
+    RETURN instructorID;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Randomly pick an instructor id based on instrument skill and free time slot
+CREATE OR REPLACE FUNCTION fn_instructor_id(
+    instrumentName VARCHAR(100)
+    , startTime TIMESTAMP
+    , endTime TIMESTAMP-- or duration
+) RETURNS INT AS $$
+DECLARE
+    instructorID INT;
+BEGIN
+    SELECT "instructor_id"
+    INTO instructorID
+    FROM "instructor_instrument" ii
+    WHERE ii."instrument_id" = (SELECT "id" FROM "instrument" WHERE "name" = instrumentName)
+      AND NOT EXISTS (
+          SELECT 1
+          FROM "session" s
+          WHERE s."instructor_id" = ii."instructor_id"
+            AND ((startTime, endTime) OVERLAPS (s."start_time", s."end_time"))
+      )
+    ORDER BY RANDOM()
+    LIMIT 1;
+
+    RETURN instructorID;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_student_id(
+      student_personal_identity_number CHAR(13)
+) RETURNS INT AS $$
+BEGIN
+    RETURN (SELECT "id" FROM "student" 
+    WHERE "person_id" = (
+        SELECT "id" FROM "person" 
+        WHERE "personal_identity_number" = student_personal_identity_number));
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_student_id(
+       firstName VARCHAR(100), 
+       lastName VARCHAR(100)) RETURNS INT AS $$
+BEGIN
+    RETURN (SELECT "id" FROM "student" 
+    WHERE "person_id" = (
+        SELECT "id" FROM "person" 
+        WHERE "first_name" = firstName AND "last_name" = lastName));
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_session_id(
+    genreName VARCHAR(100),
+    startTime TIMESTAMP
+) RETURNS INT AS $$
+DECLARE
+    courseTypeID INT;
+    genreID INT;
+    sessionID INT;
+BEGIN
+    -- Retrieve the course type ID for 'ensemble'
+    SELECT "id" INTO courseTypeID FROM "course_type" 
+    WHERE "name" = 'ensemble';
+
+    -- Retrieve the genre ID
+    SELECT "id" INTO genreID FROM "genre" 
+    WHERE "name" = genreName;
+
+    -- Retrieve the session ID
+    SELECT s."id"
+    INTO sessionID
+    FROM "session" s
+    INNER JOIN "ensemble" e ON s."id" = e."session_id"
+    WHERE s."course_type_id" = courseTypeID 
+      AND s."start_time" = startTime
+      AND e."genre_id" = genreID
+    LIMIT 1;
+
+    RETURN sessionID;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_session_id(
+    instrumentName VARCHAR(100),
+    skillLevel VARCHAR(100),
+    startTime TIMESTAMP
+) RETURNS INT AS $$
+DECLARE
+    courseTypeID INT;
+    instrumentID INT;
+    skillLevelID INT;
+    sessionID INT;
+BEGIN
+    -- Retrieve the course type ID for 'ensemble'
+    SELECT "id" INTO courseTypeID FROM "course_type" 
+    WHERE "name" = 'group';
+
+    -- Retrieve the instrument ID
+    SELECT "id" INTO instrumentID FROM "instrument" 
+    WHERE "name" = instrumentName;
+
+    -- Retrieve the skill level ID
+    SELECT "id" INTO skillLevelID FROM "skill_level" 
+    WHERE "name" = skillLevel;
+
+    -- Retrieve the session ID
+    SELECT s."id"
+    INTO sessionID
+    FROM "session" s
+    INNER JOIN "group_lesson" g ON s."id" = g."session_id"
+    WHERE s."course_type_id" = courseTypeID 
+      AND s."start_time" = startTime
+      AND g."instrument_id" = instrumentID
+      AND g."skill_level_id" = skillLevelID
+    LIMIT 1;
+
+    RETURN sessionID;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -159,6 +302,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 -- Add lessons prices with overloading 
 -- TODO Add course types
 -- TODO Testing
@@ -179,14 +323,14 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE p_add_lesson_price(
     courseType VARCHAR(100),
-    price FLOAT4,
-    skillLevel VARCHAR(100)) AS $$
+    skillLevel VARCHAR(100),
+    price FLOAT4) AS $$
 BEGIN
     INSERT INTO "lesson_price_list" ("course_type_id", "price", "skill_level_id", "valid_start_time", "transaction_start_time")
         VALUES(
             (SELECT "id" FROM "course_type" WHERE "name" = courseType), 
             price, 
-            (SELECT "id" FROM "skill_level" WHERE "level" = skillLevel), 
+            (SELECT "id" FROM "skill_level" WHERE "name" = skillLevel), 
             CURRENT_DATE, 
             CURRENT_DATE);
 END;
@@ -194,74 +338,207 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE p_add_lesson_price(
     courseType VARCHAR(100),
-    price FLOAT4,
     skillLevel VARCHAR(100),
-    instrumentName VARCHAR(100)) AS $$
+    instrumentName VARCHAR(100),
+    price FLOAT4) AS $$
 BEGIN
     INSERT INTO "lesson_price_list" ("course_type_id", "price", "skill_level_id", "instrument_id", "valid_start_time", "transaction_start_time")
         VALUES(
             (SELECT "id" FROM "course_type" WHERE "name" = courseType), 
             price, 
-            (SELECT "id" FROM "skill_level" WHERE "level" = skillLevel), 
-            (SELECT "id" FROM "instrument" WHERE "level" = instrumentName), 
+            (SELECT "id" FROM "skill_level" WHERE "name" = skillLevel), 
+            (SELECT "id" FROM "instrument" WHERE "name" = instrumentName), 
             CURRENT_DATE, 
             CURRENT_DATE);
 END;
 $$ LANGUAGE plpgsql;
 
--- Add individual lesson/session
--- TODO Change to one that books a session, finds an instructor and timeslot etc
--- You have funcitons to find instructors
--- If individual lesson, it needs to also book for student
--- If group, books time slot for instructor and awaits students?
--- If ensemble, books time slot for instructor and awaits students?
-CREATE OR REPLACE PROCEDURE p_add_individual_lesson(
-      instrumentName VARCHAR(100)
-    , skillLevel VARCHAR(100)
-    ) AS $$
+CREATE OR REPLACE PROCEDURE p_add_rental_price(
+    instrumentName VARCHAR(100),
+    pricePerMonth FLOAT4) AS $$
 BEGIN
-    INSERT INTO "lesson" (
-          "course_type_id"
-        , "instrument_id"
-        , "skill_level_id"
-        , "min_nr_of_students"
-        , "max_nr_of_students"
-    ) VALUES (
-		  (SELECT "id" FROM "course_type" WHERE "name" = 'individual')
-        , (SELECT "id" FROM "instrument" WHERE "name" = instrumentName)
-        , (SELECT "id" FROM "skill_level" WHERE "level" = skillLevel)
-        , 1
-        , 1
-    );
+    INSERT INTO "rental_price_list" ("instrument_id", "price_per_month", "valid_start_time", "transaction_start_time")
+        VALUES(
+            (SELECT "id" FROM "instrument" WHERE "name" = instrumentName), 
+            pricePerMonth,
+            CURRENT_DATE, 
+            CURRENT_DATE);
 END;
 $$ LANGUAGE plpgsql;
 
--- Add ensemble
-CREATE OR REPLACE PROCEDURE p_add_ensemble(
-      genreName VARCHAR(100)
-    , min INT
-    , max INT
-    ) AS $$
+CREATE OR REPLACE PROCEDURE p_book_individual_lesson (
+    student_personal_identity_number CHAR(13),
+    instrumentName VARCHAR(100),
+    skillLevel VARCHAR(100),
+    startTime TIMESTAMP,
+    endTime TIMESTAMP
+) LANGUAGE plpgsql AS $$
+DECLARE
+    courseTypeID INT;
+    instructorID INT;
+    studentID    INT;
+    instrumentID INT;
+    skillLevelID INT;
+    sessionID    INT;
 BEGIN
-    INSERT INTO "lesson" (
-          "course_type_id"
-        , "genre_id"
-        , "min_nr_of_students"
-        , "max_nr_of_students"
-    ) VALUES (
-		  (SELECT "id" FROM "course_type" WHERE "name" = 'ensemble')
-        , (SELECT "id" FROM "genre" WHERE "name" = genreName)
-        , min
-        , max
-    );
-END;
-$$ LANGUAGE plpgsql;
+    -- Retrieve the course type ID for 'individual'
+    SELECT "id" INTO courseTypeID FROM "course_type" 
+    WHERE "name" = 'individual';
 
+    -- Find an instructor
+    SELECT fn_instructor_id(instrumentName, startTime, endTime) INTO instructorID;
+
+    -- Retrieve the student ID
+    SELECT fn_student_id(student_personal_identity_number) INTO studentID;
+
+    -- Retrieve the instrument ID
+    SELECT "id" INTO instrumentID FROM "instrument" 
+    WHERE "name" = instrumentName;
+
+    -- Retrieve the skill level ID
+    SELECT "id" INTO skillLevelID FROM "skill_level" 
+    WHERE "name" = skillLevel;
+
+    -- Create a session
+    INSERT INTO "session" ("course_type_id", "instructor_id", "start_time", "end_time")
+    VALUES (courseTypeID, instructorID, startTime, endTime)
+    RETURNING id INTO sessionID;
+    
+    -- Add the lesson
+    INSERT INTO "individual_lesson" ("session_id", "instrument_id", "skill_level_id")
+    VALUES (sessionID, instrumentID, skillLevelID);
+
+    -- Book for student
+    INSERT INTO "student_booking" ("student_id", "session_id")
+    VALUES (studentID, sessionID);
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE p_add_group_lesson (
+    instrumentName VARCHAR(100),
+    skillLevel VARCHAR(100),
+    startTime TIMESTAMP,
+    endTime TIMESTAMP,
+    min INT,
+    max INT
+) LANGUAGE plpgsql AS $$
+DECLARE
+    courseTypeID INT;
+    instructorID INT;
+    instrumentID INT;
+    skillLevelID INT;
+    sessionID    INT;
+BEGIN
+    -- Retrieve the course type ID for 'individual'
+    SELECT "id" INTO courseTypeID FROM "course_type" 
+    WHERE "name" = 'group';
+
+    -- Find an instructor
+    SELECT fn_instructor_id(instrumentName, startTime, endTime) INTO instructorID;
+
+    -- Retrieve the instrument ID
+    SELECT "id" INTO instrumentID FROM "instrument" 
+    WHERE "name" = instrumentName;
+
+    -- Retrieve the skill level ID
+    SELECT "id" INTO skillLevelID FROM "skill_level" 
+    WHERE "name" = skillLevel;
+
+    -- Create a session
+    INSERT INTO "session" ("course_type_id", "instructor_id", "start_time", "end_time")
+    VALUES (courseTypeID, instructorID, startTime, endTime)
+    RETURNING id INTO sessionID;
+    
+    -- Add the lesson
+    INSERT INTO "group_lesson" ("session_id", "instrument_id", "skill_level_id", "min_nr_of_students", "max_nr_of_students")
+    VALUES (sessionID, instrumentID, skillLevelID, min, max);
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE p_add_ensemble (
+    genreName VARCHAR(100),
+    startTime TIMESTAMP,
+    endTime TIMESTAMP,
+    min INT,
+    max INT
+) LANGUAGE plpgsql AS $$
+DECLARE
+    courseTypeID INT;
+    instructorID INT;
+    genreID      INT;
+    sessionID    INT;
+BEGIN
+    -- Retrieve the course type ID for 'individual'
+    SELECT "id" INTO courseTypeID FROM "course_type" 
+    WHERE "name" = 'ensemble';
+
+    -- Find an instructor
+    SELECT fn_instructor_id(startTime, endTime) INTO instructorID;
+
+    -- Retrieve the genre ID
+    SELECT "id" INTO genreID FROM "genre" 
+    WHERE "name" = genreName;
+
+    -- Create a session
+    INSERT INTO "session" ("course_type_id", "instructor_id", "start_time", "end_time")
+    VALUES (courseTypeID, instructorID, startTime, endTime)
+    RETURNING id INTO sessionID;
+    
+    -- Add the lesson
+    INSERT INTO "ensemble" ("session_id", "genre_id", "min_nr_of_students", "max_nr_of_students")
+    VALUES (sessionID, genreID, min, max);
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE p_book_group_lesson_for_student(
+    student_personal_identity_number CHAR(13),
+    instrumentName VARCHAR(100),
+    skillLevel VARCHAR(100),
+    startTime TIMESTAMP
+) LANGUAGE plpgsql AS $$
+DECLARE
+    studentID    INT;
+    sessionID    INT;
+BEGIN
+    -- Retrieve the student ID
+    SELECT fn_student_id(student_personal_identity_number) INTO studentID;
+
+    -- Retrieve the session ID (if it exists)
+    SELECT fn_session_id(instrumentName, skillLevel, startTime) INTO sessionID;
+
+    -- Book for student
+    INSERT INTO "student_booking" ("student_id", "session_id")
+    VALUES (studentID, sessionID);
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE p_book_ensemble_for_student(
+    student_personal_identity_number CHAR(13),
+    genreName VARCHAR(100),
+    startTime TIMESTAMP
+) LANGUAGE plpgsql AS $$
+DECLARE
+    studentID    INT;
+    sessionID    INT;
+BEGIN
+    -- Retrieve the student ID
+    SELECT fn_student_id(student_personal_identity_number) INTO studentID;
+
+    -- Retrieve the session ID (if it exists)
+    SELECT fn_session_id(genreName, startTime) INTO sessionID;
+
+    -- Book for student
+    INSERT INTO "student_booking" ("student_id", "session_id")
+    VALUES (studentID, sessionID);
+END;
+$$;
+
+-- POPULATE
 -- Course Type
 INSERT INTO "course_type" ("name") VALUES 
       ('individual')
     , ('group')
-    , ('ensembel')
+    , ('ensemble')
     ;
 
 -- Genre    
@@ -279,7 +556,7 @@ INSERT INTO "genre" ("name") VALUES
 
 
 -- Skill levels
-INSERT INTO "skill_level" ("level") VALUES
+INSERT INTO "skill_level" ("name") VALUES
   ('beginner'),
   ('intermediate'),
   ('advanced');
@@ -319,25 +596,6 @@ INSERT INTO "brand" ("name") VALUES
   ('miyazawa'),       -- Known for high-quality flutes
   ('gemeinhardt'),    -- Known for student and intermediate flutes
   ('muramatsu');      -- Known for professional flutes, especially in the classical music world
-
-
--- Define instrument prices and match instrument names with their IDs using a subquery
-INSERT INTO "instrument_price_list" ("instrument_id", "price_per_month", "effective_date")
-SELECT "i"."id", "p"."price_per_month", TO_DATE("p"."effective_date", 'YYYY-MM-DD')
-FROM (
-  VALUES
-    ('guitar', 50.00, '2023-11-23'),
-    ('piano', 60.00, '2023-11-23'),
-    ('violin', 70.00, '2023-11-23'),
-    ('drums', 40.00, '2023-11-23'),
-    ('saxophone', 75.00, '2023-11-23'),
-    ('flute', 30.00, '2023-11-23'),
-    ('trumpet', 55.00, '2023-11-23'),
-    ('bass guitar', 70.00, '2023-11-23'),
-    ('clarinet', 45.00, '2023-11-23'),
-    ('harp', 80.00, '2023-11-23')
-) AS "p" ("instrument_name", "price_per_month", "effective_date")
-JOIN "instrument" AS "i" ON "p"."instrument_name" = "i"."name";
 
 
 -- Define rentable instruments and match them with instrument and brand IDs (five of each)
@@ -498,261 +756,146 @@ CALL p_add_student_contact_person('Emma', 'Andersson', 'Sarah', 'Wilson', 'Grand
 
 CALL p_add_student_contact_person('Liam', 'Andersson', 'Sarah', 'Wilson','Grandparent');
 
-
--- Populate the "ensemble_price" table with ensemble prices and genres
-INSERT INTO "ensemble_price" ("genre_id", "price", "effective_date")
-SELECT "g"."id", "p"."price_per_month", TO_DATE("p"."effective_date", 'YYYY-MM-DD')
-FROM (
-  VALUES
-    ('gospel', 100.00, '2023-11-23'),
-    ('punk', 120.00, '2023-11-23'),
-    ('rock', 150.00, '2023-11-23'),
-    ('jazz', 110.00, '2023-11-23'),
-    ('hip-hop', 130.00, '2023-11-23'),
-    ('country', 160.00, '2023-11-23'),
-    ('electronic', 140.00, '2023-11-23'),
-    ('reggae', 125.00, '2023-11-23'),
-    ('blues', 105.00, '2023-11-23'),
-    ('classical', 135.00, '2023-11-23')
-) AS "p" ("genre_name", "price_per_month", "effective_date")
-JOIN "genre" AS "g" ON "p"."genre_name" = "g"."name";
-
--- Populate the "individual_lesson_price" table with individual lesson prices for all instruments and skill levels
-INSERT INTO "individual_lesson_price" ("instrument_id", "skill_level_id", "price", "effective_date")
-SELECT "i"."id", "s"."id", "p"."price_per_month", TO_DATE("p"."effective_date", 'YYYY-MM-DD')
-FROM (
-  VALUES
-    ('guitar', 'beginner', 70.00, '2023-11-23'),
-    ('guitar', 'intermediate', 70.00, '2023-11-23'),
-    ('guitar', 'advanced', 90.00, '2023-11-23'),
-    ('piano', 'beginner', 60.00, '2023-11-23'),
-    ('piano', 'intermediate', 60.00, '2023-11-23'),
-    ('piano', 'advanced', 85.00, '2023-11-23'),
-    ('violin', 'beginner', 75.00, '2023-11-23'),
-    ('violin', 'intermediate', 75.00, '2023-11-23'),
-    ('violin', 'advanced', 100.00, '2023-11-23'),
-    ('drums', 'beginner', 55.00, '2023-11-23'),
-    ('drums', 'intermediate', 55.00, '2023-11-23'),
-    ('drums', 'advanced', 80.00, '2023-11-23'),
-    ('saxophone', 'beginner', 85.00, '2023-11-23'),
-    ('saxophone', 'intermediate', 85.00, '2023-11-23'),
-    ('saxophone', 'advanced', 95.00, '2023-11-23'),
-    ('flute', 'beginner', 75.00, '2023-11-23'),
-    ('flute', 'intermediate', 75.00, '2023-11-23'),
-    ('flute', 'advanced', 85.00, '2023-11-23'),
-    ('trumpet', 'beginner', 65.00, '2023-11-23'),
-    ('trumpet', 'intermediate', 65.00, '2023-11-23'),
-    ('trumpet', 'advanced', 75.00, '2023-11-23'),
-    ('bass guitar', 'beginner', 75.00, '2023-11-23'),
-    ('bass guitar', 'intermediate', 75.00, '2023-11-23'),
-    ('bass guitar', 'advanced', 85.00, '2023-11-23'),
-    ('clarinet', 'beginner', 70.00, '2023-11-23'),
-    ('clarinet', 'intermediate', 70.00, '2023-11-23'),
-    ('harp', 'beginner', 100.00, '2023-11-23')
-) AS "p" ("instrument_name", "skill_level_name", "price_per_month", "effective_date")
-JOIN "instrument" AS "i" ON "p"."instrument_name" = "i"."name"
-JOIN "skill_level" AS "s" ON "p"."skill_level_name" = "s"."level";
-
--- Populate the "group_lesson_price" table with group lesson prices for all instruments and skill levels (skipping harp and clarinet)
-INSERT INTO "group_lesson_price" ("instrument_id", "skill_level_id", "price", "effective_date")
-SELECT "i"."id", "s"."id", "p"."price_per_month", TO_DATE("p"."effective_date", 'YYYY-MM-DD')
-FROM (
-  VALUES
-    ('guitar', 'beginner', 45.00, '2023-11-23'),
-    ('guitar', 'intermediate', 45.00, '2023-11-23'),
-    ('guitar', 'advanced', 65.00, '2023-11-23'),
-    ('piano', 'beginner', 50.00, '2023-11-23'),
-    ('piano', 'intermediate', 50.00, '2023-11-23'),
-    ('piano', 'advanced', 70.00, '2023-11-23'),
-    ('violin', 'beginner', 55.00, '2023-11-23'),
-    ('violin', 'intermediate', 55.00, '2023-11-23'), -- Set the same price for intermediate and beginner
-    ('violin', 'advanced', 75.00, '2023-11-23'),
-    ('drums', 'beginner', 35.00, '2023-11-23'),
-    ('drums', 'intermediate', 35.00, '2023-11-23'), -- Set the same price for intermediate and beginner
-    ('drums', 'advanced', 55.00, '2023-11-23'),
-    ('saxophone', 'beginner', 60.00, '2023-11-23'),
-    ('saxophone', 'intermediate', 60.00, '2023-11-23'), -- Set the same price for intermediate and beginner
-    ('saxophone', 'advanced', 80.00, '2023-11-23'),
-    ('flute', 'beginner', 25.00, '2023-11-23'),
-    ('flute', 'intermediate', 25.00, '2023-11-23'), -- Set the same price for intermediate and beginner
-    ('flute', 'advanced', 45.00, '2023-11-23'),
-    ('trumpet', 'beginner', 50.00, '2023-11-23'),
-    ('trumpet', 'intermediate', 50.00, '2023-11-23'), -- Set the same price for intermediate and beginner
-    ('trumpet', 'advanced', 70.00, '2023-11-23'),
-    ('bass guitar', 'beginner', 55.00, '2023-11-23'),
-    ('bass guitar', 'intermediate', 55.00, '2023-11-23'), -- Set the same price for intermediate and beginner
-    ('bass guitar', 'advanced', 75.00, '2023-11-23')
-    -- Skip harp and clarinet
-) AS "p" ("instrument_name", "skill_level_name", "price_per_month", "effective_date")
-JOIN "instrument" AS "i" ON "p"."instrument_name" = "i"."name"
-JOIN "skill_level" AS "s" ON "p"."skill_level_name" = "s"."level"
-WHERE "i"."name" NOT IN ('harp', 'clarinet');
-
--- populate "session" table
-INSERT INTO "session" ("start_time", "end_time")
-VALUES
-    ('2023-02-03 14:00:00', '2023-02-03 15:00:00'), --group lesson, guitar, beginner
-    ('2023-01-15 14:30:00', '2023-01-15 15:30:00'), --group lesson, guitar, advanced
-    ('2023-02-28 14:15:00', '2023-02-28 15:15:00'), --group lesson, trumpet, intermediate
-    ('2023-03-10 17:45:00', '2023-03-10 18:45:00'), --group lesson, violin, advanced
-    ('2023-04-05 16:30:00', '2023-04-05 17:30:00'), --individual, piano, beginner
-    ('2023-05-20 14:45:00', '2023-05-20 15:45:00'), --individual, drums, intermediate
-    ('2023-04-08 15:20:00', '2023-04-08 16:20:00'), --individual, flute, advanced
-    ('2023-10-12 18:00:00', '2023-10-12 19:00:00'), --individual, bass guitar, beginner
-    ('2023-03-25 14:10:00', '2023-03-25 15:10:00'), --individual, clarinet, beginner
-    ('2023-09-03 16:30:00', '2023-09-03 17:30:00'), --individual, drums, beginner
-    ('2023-10-15 15:45:00', '2023-10-15 16:45:00'), --individual, trumpet, intermediate
-    ('2023-11-20 14:30:00', '2023-11-20 15:30:00'), --individual, clarinet, advanced
-    ('2023-11-05 16:20:00', '2023-11-05 17:20:00'), --individual, violin, intermediate
-    ('2023-01-08 18:00:00', '2023-01-08 19:00:00'), --individual, saxophone, advanced
-    ('2023-02-17 14:45:00', '2023-02-17 15:45:00'), --individual, drums, beginner
-    ('2023-03-21 15:30:00', '2023-03-21 16:30:00'), --individual, drums, advanced
-    ('2023-04-02 17:15:00', '2023-04-02 18:15:00'), --ensemble, blues
-    ('2023-05-10 16:00:00', '2023-05-10 17:00:00'), --ensemble, rock
-    ('2023-09-28 14:30:00', '2023-09-28 15:30:00'), --ensemble, jazz
-    ('2023-04-15 17:00:00', '2023-04-15 18:00:00'), --ensemble, rock
-    ('2023-12-02 14:00:00', '2023-12-02 15:00:00'), --ensemble, rock
-    ('2023-12-02 15:30:00', '2023-12-02 16:30:00'), --ensemble, jazz
-    ('2023-12-03 16:45:00', '2023-12-03 17:45:00'), --ensemble, blues
-    ('2023-12-04 18:00:00', '2023-12-04 19:00:00'), --ensemble, classical
-    ('2023-12-04 19:15:00', '2023-12-04 20:15:00'); --ensemble, rock
-
--- populate group lesson
-INSERT INTO "group_lesson" ("session_id", "instrument_id", "skill_level_id", "min_nr_of_students", "max_nr_of_students")
-VALUES
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-02-03 14:00:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'guitar'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner'),
-     5, 10),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-01-15 14:30:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'guitar'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced'),
-     5, 15),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-02-28 14:15:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'trumpet'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate'),
-     5, 15),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-03-10 17:45:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'violin'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced'),
-     5, 20);
-
--- populate individual lesson
-INSERT INTO "individual_lesson" ("session_id", "instrument_id", "skill_level_id")
-VALUES
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-05 16:30:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'piano'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-05-20 14:45:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-08 15:20:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'flute'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-10-12 18:00:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'bass guitar'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-03-25 14:10:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-09-03 16:30:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-10-15 15:45:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'trumpet'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-11-20 14:30:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-11-05 16:20:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'violin'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'intermediate')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-01-08 18:00:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'saxophone'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-02-17 14:45:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'beginner')),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-03-21 15:30:00'),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'drums'),
-     (SELECT "id" FROM "skill_level" WHERE "level" = 'advanced'));
-
--- populate ensemble
-INSERT INTO "ensemble" ("session_id", "genre_id", "min_nr_of_students", "max_nr_of_students")
-VALUES
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-02 17:15:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'blues'),
-     3, 10),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-05-10 16:00:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
-     3, 6),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-09-28 14:30:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'jazz'),
-     3, 8),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-04-15 17:00:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
-     3, 6),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-02 14:00:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
-     3, 6),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-02 15:30:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'jazz'),
-     3, 5),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-03 16:45:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'blues'),
-     2, 6),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-04 18:00:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'classical'),
-     3, 10),
-    ((SELECT "id" FROM "session" WHERE "start_time" = '2023-12-04 19:15:00'),
-     (SELECT "id" FROM "genre" WHERE "name" = 'rock'),
-     3, 8);
-
--- populate instructor_booking
-INSERT INTO "instructor_booking" ("session_id", "instructor_id")
-VALUES
-    (61, 16),
-    (62, 19),
-    (63, 18),
-    (64, 19),
-    (65, 17),
-    (66, 20),
-    (67, 18),
-    (68, 20),
-    (69, 18),
-    (70, 17),
-    (71, 18),
-    (72, 18),
-    (73, 19),
-    (74, 18),
-    (75, 17),
-    (76, 17),
-    (77, 20),
-    (78, 16),
-    (79, 18),
-    (80, 20);
+-- Populate rental price
+CALL p_add_rental_price('guitar', 100);
+CALL p_add_rental_price('violin', 75);
+CALL p_add_rental_price('drums', 150);
+CALL p_add_rental_price('saxophone', 100);
+CALL p_add_rental_price('flute', 50);
+CALL p_add_rental_price('trumpet', 100.00);
+CALL p_add_rental_price('bass guitar', 100);
+CALL p_add_rental_price('clarinet', 100);
+CALL p_add_rental_price('harp', 200;
 
 
--- populate student_booking
-INSERT INTO "student_booking" ("session_id", "student_id")
-VALUES
-    (101, 64),
-    (102, 65),
-    (103, 66),
-    (104, 67),
-    (105, 68),
-    (101, 69),
-    (101, 70),
-    (101, 71),
-    (102, 72),
-    (102, 73),
-    (102, 74),
-    (102, 75),
-    (103, 76),
-    (103, 77),
-    (103, 78),
-    (104, 79),
-    (104, 64),
-    (105, 80),
-    (105, 81),
-    (105, 72);
+-- Populate lesson price list table
+CALL p_add_lesson_price('ensemble', 125);
+CALL p_add_lesson_price('group', 150);
+CALL p_add_lesson_price('group', 'advanced', 150);
+CALL p_add_lesson_price('individual', 150);
+CALL p_add_lesson_price('individual', 'advanced', 150);
+
+-- populate the session and ensemble table
+CALL p_add_ensemble('blues',     '2023-04-02 17:15', '2023-04-02 18:15', 5, 15);
+CALL p_add_ensemble('blues',     '2023-12-03 16:45', '2023-12-03 17:45', 5, 15);
+CALL p_add_ensemble('classical', '2023-12-04 18:00', '2023-12-04 19:00', 5, 15);
+CALL p_add_ensemble('jazz',      '2023-09-28 14:30', '2023-09-28 15:30', 5, 15);
+CALL p_add_ensemble('jazz',      '2023-12-02 15:30', '2023-12-02 16:30', 5, 15);
+CALL p_add_ensemble('rock',      '2023-04-15 17:00', '2023-04-15 18:00', 5, 15);
+CALL p_add_ensemble('rock',      '2023-05-10 16:00', '2023-05-10 17:00', 5, 15);
+CALL p_add_ensemble('rock',      '2023-12-02 14:00', '2023-12-02 15:00', 5, 15);
+CALL p_add_ensemble('rock',      '2023-12-04 19:15', '2023-12-04 20:15', 5, 15);
+
+-- populate the session and group lesson table
+CALL p_add_group_lesson('guitar', 'advanced',     '2023-01-15 14:30', '2023-01-15 15:30', 3, 10);
+CALL p_add_group_lesson('guitar', 'beginner',     '2023-02-03 14:00', '2023-02-03 15:00', 3,10); 
+CALL p_add_group_lesson('trumpet','intermediate', '2023-02-28 14:15', '2023-02-28 15:15', 3, 10);
+CALL p_add_group_lesson('violin', 'advanced', '   2023-03-10 17:45', '2023-03-10 18:45', 3, 10);
+
+-- populate student booking table
+CALL p_book_ensemble_for_student('19901001-1111', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19901001-1111', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19901001-1111', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19901001-1111','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19901007-1113', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19901007-1113', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19901007-1113', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19901007-1113', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19901007-1113', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19901007-1113', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19901007-1113','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19901101-2221', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19901101-2221', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19901101-2221', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19901101-2221','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19901201-3331', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19901201-3331', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19901201-3331', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19901201-3331','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19901211-2222', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19901211-2222', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19901211-2222', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19901211-2222', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19901211-2222', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19901211-2222', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19901211-2222','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19902001-1112', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19902001-1112', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19902001-1112', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19902001-1112','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19910222-4441', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19910222-4441', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19910222-4441', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19910222-4441','rock', '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19910601-8881', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19910601-8881', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19910601-8881', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19910601-8881', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19910701-9991', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19910701-9991', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19910701-9991', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19910701-9991', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19910801-1010', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19910801-1010', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19910801-1010', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19910801-1010', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19910802-2010', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19910802-2010', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19910802-2010', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19910802-2010', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19910901-1111', 'blues', '2023-12-03 16:45');
+CALL p_book_ensemble_for_student('19910901-1111', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19910901-1111', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19910901-1111', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19911001-1211', 'blues', '2023-12-03 16:45');
+CALL p_book_ensemble_for_student('19911001-1211', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19911001-1211', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19911001-1211', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19920201-1111', 'blues', '2023-12-03 16:45');
+CALL p_book_ensemble_for_student('19920201-1111', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19920201-1111', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19920201-1111', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19941001-1212', 'blues', '2023-12-03 16:45');
+CALL p_book_ensemble_for_student('19941001-1212', 'classical', '2023-12-04 18:00');
+CALL p_book_ensemble_for_student('19941001-1212', 'rock', '2023-04-15 17:00');
+CALL p_book_ensemble_for_student('19941001-1212', 'rock', '2023-05-10 16:00');
+CALL p_book_ensemble_for_student('19951201-3332', 'blues', '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19951201-3332', 'jazz', '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19951201-3332', 'jazz', '2023-12-02 15:30');
+CALL p_book_ensemble_for_student('19951201-3332', 'rock', '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19951201-3332','rock', '2023-12-02 14:00');
+
+CALL p_book_group_lesson_for_student('19901001-1111', 'guitar', 'beginner', '2023-02-03 14:00'); 
+CALL p_book_group_lesson_for_student('19901001-1111', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19901007-1113', 'guitar', 'advanced', '2023-01-15 14:30');
+CALL p_book_group_lesson_for_student('19901007-1113', 'guitar', 'beginner', '2023-02-03 14:00'); 
+CALL p_book_group_lesson_for_student('19901007-1113', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19901007-1113', 'violin', 'advanced', '2023-03-10 17:45');
+CALL p_book_group_lesson_for_student('19901101-2221', 'guitar', 'beginner', '2023-02-03 14:00'); 
+CALL p_book_group_lesson_for_student('19901101-2221', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19901201-3331', 'guitar', 'beginner', '2023-02-03 14:00'); 
+CALL p_book_group_lesson_for_student('19901201-3331', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19901211-2222', 'guitar', 'advanced', '2023-01-15 14:30');
+CALL p_book_group_lesson_for_student('19901211-2222', 'guitar', 'beginner', '2023-02-03 14:00'); 
+CALL p_book_group_lesson_for_student('19901211-2222', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19901211-2222', 'violin', 'advanced', '2023-03-10 17:45');
+CALL p_book_group_lesson_for_student('19902001-1112', 'guitar', 'beginner', '2023-02-03 14:00'); 
+CALL p_book_group_lesson_for_student('19902001-1112', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19910222-4441', 'guitar', 'advanced', '2023-01-15 14:30');
+CALL p_book_group_lesson_for_student('19910222-4441', 'trumpet','intermediate',  '2023-02-28 14:15');
+CALL p_book_group_lesson_for_student('19951201-3332', 'guitar', 'advanced', '2023-01-15 14:30');
+CALL p_book_group_lesson_for_student('19951201-3332', 'trumpet','intermediate',  '2023-02-28 14:15');
+
+-- populate the student booking, individual lesson and session table
+CALL p_book_individual_lesson('19901001-1111', 'piano', 'beginner',      '2023-04-05 16:30', '2023-04-05 17:30');
+CALL p_book_individual_lesson('19901007-1113', 'drums', 'beginner',      '2023-02-17 14:45', '2023-02-17 15:45');
+CALL p_book_individual_lesson('19901007-1113', 'drums','advanced',       '2023-03-21 15:30', '2023-03-21 16:30');
+CALL p_book_individual_lesson('19901007-1113', 'flute',  'advanced',     '2023-04-08 15:20', '2023-04-08 16:20');
+CALL p_book_individual_lesson('19901101-2221', 'bass guitar', 'beginner','2023-10-12 18:00', '2023-10-12 19:00');
+CALL p_book_individual_lesson('19901201-3331', 'drums',  'beginner',     '2023-09-03 16:30', '2023-09-03 17:30');
+CALL p_book_individual_lesson('19901211-2222', 'clarinet',  'beginner',   '2023-03-25 14:10', '2023-03-25 15:10');
+CALL p_book_individual_lesson('19901211-2222', 'saxophone', 'advanced',  '2023-01-08 18:00', '2023-01-08 19:00');
+CALL p_book_individual_lesson('19902001-1112', 'drums', 'intermediate',  '2023-05-20 14:45', '2023-05-20 15:45');
+CALL p_book_individual_lesson('19910222-4441', 'clarinet',  'advanced',  '2023-11-20 14:30', '2023-11-20 15:30');
+CALL p_book_individual_lesson('19951201-3332', 'trumpet',  'intermediate','2023-10-15 15:45', '2023-10-15 16:45');
+CALL p_book_individual_lesson('19951201-3332', 'violin','intermediate',  '2023-11-05 16:20', '2023-11-05 17:20');
