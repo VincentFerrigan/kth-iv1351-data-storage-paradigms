@@ -1,3 +1,269 @@
+-- FUNCTIONS
+-- Insert new person and return their id.
+CREATE OR REPLACE FUNCTION fn_add_person(
+    pid CHAR(13),
+    firstName VARCHAR(100),
+    lastName VARCHAR(100),
+    street VARCHAR(100),
+    zip VARCHAR(10),
+    city VARCHAR(100),
+    phone VARCHAR(50),
+    email VARCHAR(100)
+    ) RETURNS INT as $$
+
+-- Variable to hold the newly inserted person ID
+DECLARE 
+	new_person_id INT;
+BEGIN
+    -- Insert a the person and capture its ID
+    INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
+    VALUES (pid, firstName, lastName, street, zip, city, phone, email) 
+        RETURNING id INTO new_person_id;
+    -- Insert the new person as student
+    RETURN new_person_id;
+END;
+$$  LANGUAGE plpgsql;
+
+-- Return instructor id based on first and last name
+CREATE OR REPLACE FUNCTION fn_instructor_id(
+       firstName VARCHAR(100), 
+       lastName VARCHAR(100)) RETURNS INT AS $$
+BEGIN
+    RETURN (SELECT "id" FROM "instructor" 
+    WHERE "person_id" = (
+        SELECT "id" FROM "person" 
+        WHERE "first_name" = firstName AND "last_name" = lastName));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Return instructor id based on first and last name
+CREATE OR REPLACE FUNCTION fn_instructor_id(
+       firstName VARCHAR(100), 
+       lastName VARCHAR(100)) RETURNS INT AS $$
+BEGIN
+    RETURN (SELECT "id" FROM "instructor" 
+    WHERE "person_id" = (
+        SELECT "id" FROM "person" 
+        WHERE "first_name" = firstName AND "last_name" = lastName));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Randomly pick an instructor id based on instrument skill
+CREATE OR REPLACE FUNCTION fn_instructor_id(
+    instrumentName VARCHAR(100)
+) RETURNS INT AS $$
+DECLARE
+    instructorID INT;
+BEGIN
+    SELECT "instructor_id"
+    INTO instructorID
+    FROM "instructor_instrument"
+    WHERE "instrument_id" = (SELECT "id" FROM "instrument" WHERE "name" = instrumentName)
+    ORDER BY RANDOM()
+    LIMIT 1;
+
+    RETURN instructorID;
+END;
+$$ LANGUAGE plpgsql;
+
+-- PROCEDURES
+CREATE OR REPLACE PROCEDURE p_add_student(
+    pid CHAR(13),
+    firstName VARCHAR(100),
+    lastName VARCHAR(100),
+    street VARCHAR(100),
+    zip VARCHAR(10),
+    city VARCHAR(100),
+    phone VARCHAR(50),
+    email VARCHAR(100)
+    ) AS $body$
+DECLARE
+	new_person_id INT;
+BEGIN
+	new_person_id := fn_add_person(pid, firstName, lastName, street, zip, city, phone, email);
+	INSERT INTO "student" ("person_id") VALUES (new_person_id);
+END;
+$body$  LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE p_add_instructor(
+    pid CHAR(13),
+    firstName VARCHAR(100),
+    lastName VARCHAR(100),
+    street VARCHAR(100),
+    zip VARCHAR(10),
+    city VARCHAR(100),
+    phone VARCHAR(50),
+    email VARCHAR(100)
+    ) AS $body$
+DECLARE
+	new_person_id INT;
+BEGIN
+	new_person_id := fn_add_person(pid, firstName, lastName, street, zip, city, phone, email);
+	INSERT INTO "instructor" ("person_id") VALUES (new_person_id);
+END;
+$body$  LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE p_add_instructor_instruments(
+        firstName VARCHAR(100), 
+        lastName VARCHAR(100), 
+        instrumentNames VARCHAR[])
+AS $$
+DECLARE
+	v_name VARCHAR(100);
+BEGIN
+    FOREACH v_name IN ARRAY instrumentNames
+    LOOP
+        INSERT INTO "instructor_instrument" ("instructor_id", "instrument_id")
+        VALUES
+            ((SELECT "id" FROM "instructor" 
+                WHERE "person_id" = (
+                    SELECT "id" FROM "person" WHERE "first_name" = firstName AND "last_name" = lastName)),
+            (SELECT "id" FROM "instrument" WHERE "name" = v_name));
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Populate the "sibling" table based on students with the same last name and address
+CREATE OR REPLACE PROCEDURE p_locate_and_populate_siblings_table()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO "sibling" ("sibling_1", "sibling_2")
+    SELECT DISTINCT s1."id", s2."id"
+    FROM "student" s1
+    JOIN "student" s2 ON s1."id" < s2."id"  -- Ensure students are different
+    JOIN "person" p1 ON s1."person_id" = p1."id"
+    JOIN "person" p2 ON s2."person_id" = p2."id"
+    WHERE p1."last_name" = p2."last_name"
+      AND p1."street" = p2."street"
+      AND p1."zip" = p2."zip"
+      AND p1."city" = p2."city"
+    ON CONFLICT ("sibling_1", "sibling_2")
+    DO NOTHING;  -- Skip insert if conflict occurs
+END;
+$$;
+
+-- Populate the "student_contact_person" table with parent, guardian, and grandparent relationships
+CREATE OR REPLACE PROCEDURE p_add_student_contact_person(
+    studentFirstName VARCHAR(100),
+    studentLastName VARCHAR(100),
+    contactFirstName VARCHAR(100),
+    contactLastName VARCHAR(100),
+    relation VARCHAR(100)) AS $$
+BEGIN
+    INSERT INTO "student_contact_person" ("student_id", "contact_person_id", "relation")
+    VALUES
+        ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = studentFirstName AND "last_name" = studentLastName)),
+        (SELECT "id" FROM "contact_person" WHERE "first_name" = contactFirstName AND "last_name" = 'Andersson'), 
+        relation);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add lessons prices with overloading 
+-- TODO Add course types
+-- TODO Testing
+-- TODO procedurer för att skapa lessons, sessions och student bookings. 
+-- TODO funktioner som svara på querisarna
+CREATE OR REPLACE PROCEDURE p_add_lesson_price(
+    courseType VARCHAR(100),
+    price FLOAT4) AS $$
+BEGIN
+    INSERT INTO "lesson_price_list" ("course_type_id", "price", "valid_start_time", "transaction_start_time")
+        VALUES(
+            (SELECT "id" FROM "course_type" WHERE "name" = courseType), 
+            price, 
+            CURRENT_DATE, 
+            CURRENT_DATE);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE p_add_lesson_price(
+    courseType VARCHAR(100),
+    price FLOAT4,
+    skillLevel VARCHAR(100)) AS $$
+BEGIN
+    INSERT INTO "lesson_price_list" ("course_type_id", "price", "skill_level_id", "valid_start_time", "transaction_start_time")
+        VALUES(
+            (SELECT "id" FROM "course_type" WHERE "name" = courseType), 
+            price, 
+            (SELECT "id" FROM "skill_level" WHERE "level" = skillLevel), 
+            CURRENT_DATE, 
+            CURRENT_DATE);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE p_add_lesson_price(
+    courseType VARCHAR(100),
+    price FLOAT4,
+    skillLevel VARCHAR(100),
+    instrumentName VARCHAR(100)) AS $$
+BEGIN
+    INSERT INTO "lesson_price_list" ("course_type_id", "price", "skill_level_id", "instrument_id", "valid_start_time", "transaction_start_time")
+        VALUES(
+            (SELECT "id" FROM "course_type" WHERE "name" = courseType), 
+            price, 
+            (SELECT "id" FROM "skill_level" WHERE "level" = skillLevel), 
+            (SELECT "id" FROM "instrument" WHERE "level" = instrumentName), 
+            CURRENT_DATE, 
+            CURRENT_DATE);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add individual lesson/session
+-- TODO Change to one that books a session, finds an instructor and timeslot etc
+-- You have funcitons to find instructors
+-- If individual lesson, it needs to also book for student
+-- If group, books time slot for instructor and awaits students?
+-- If ensemble, books time slot for instructor and awaits students?
+CREATE OR REPLACE PROCEDURE p_add_individual_lesson(
+      instrumentName VARCHAR(100)
+    , skillLevel VARCHAR(100)
+    ) AS $$
+BEGIN
+    INSERT INTO "lesson" (
+          "course_type_id"
+        , "instrument_id"
+        , "skill_level_id"
+        , "min_nr_of_students"
+        , "max_nr_of_students"
+    ) VALUES (
+		  (SELECT "id" FROM "course_type" WHERE "name" = 'individual')
+        , (SELECT "id" FROM "instrument" WHERE "name" = instrumentName)
+        , (SELECT "id" FROM "skill_level" WHERE "level" = skillLevel)
+        , 1
+        , 1
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add ensemble
+CREATE OR REPLACE PROCEDURE p_add_ensemble(
+      genreName VARCHAR(100)
+    , min INT
+    , max INT
+    ) AS $$
+BEGIN
+    INSERT INTO "lesson" (
+          "course_type_id"
+        , "genre_id"
+        , "min_nr_of_students"
+        , "max_nr_of_students"
+    ) VALUES (
+		  (SELECT "id" FROM "course_type" WHERE "name" = 'ensemble')
+        , (SELECT "id" FROM "genre" WHERE "name" = genreName)
+        , min
+        , max
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Course Type
+INSERT INTO "course_type" ("name") VALUES 
+      ('individual')
+    , ('group')
+    , ('ensembel')
+    ;
+
 -- Genre    
 INSERT INTO "genre" ("name") VALUES
   ('gospel'),
@@ -113,243 +379,70 @@ UNION ALL
 SELECT "instrument_id", "brand_id"
 FROM "rentable_instrument";
 
--- DEBUGG
--- SELECT
---     ri.id AS rentable_instrument_id,
---     i.name AS instrument_name,
---     b.name AS brand_name,
---     ip.price_per_month AS instrument_price
--- FROM
---     "rentable_instrument" AS ri
--- JOIN
---     "instrument" AS i ON ri.instrument_id = i.id
--- JOIN
---     "brand" AS b ON ri.brand_id = b.id
--- JOIN
---     "instrument_price_list" AS ip ON ri.instrument_id = ip.instrument_id
--- ORDER BY
---     ri.id;
-
 -- Insert 5 instructors into the "person" and "instructor" tables
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19620523-0551', 'Erik', 'Eriksson', 'Storgatan 5', '12345', 'Stockholm', '+46 8 123 456 78', 'erik@gmail.com');
+call p_add_instructor('19620523-0551', 'Erik', 'Eriksson', 'Storgatan 5', '12345', 'Stockholm', '+46 8 123 456 78', 'erik@gmail.com');
+call p_add_instructor('19620523-0552', 'Anna', 'Andersson', 'Lillgatan 7', '12345', 'Göteborg', '+46 8 234 567 89', 'anna@yahoo.com');
+call p_add_instructor('19620523-0553', 'Björn', 'Borg', 'Turegatan 10', '118 18', 'Malmö', '+46736369741', 'bjorn@gmail.com');
+call p_add_instructor('19620523-0554', 'Karin', 'Karlsson', 'Sjögatan 3', '12345', 'Uppsala', '+46 8 345 678 90', 'karin@yahoo.com');
+call p_add_instructor('19620523-0555', 'Göran', 'Gustafsson', 'Åsgatan 8', '12345', 'Linköping', '+46 8 456 789 01', 'goran@gmail.com');
 
-INSERT INTO "instructor" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19620523-0551';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19620523-0552', 'Anna', 'Andersson', 'Lillgatan 7', '12345', 'Göteborg', '+46 8 234 567 89', 'anna@yahoo.com');
-
-INSERT INTO "instructor" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19620523-0552';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19620523-0553', 'Björn', 'Borg', 'Turegatan 10', '118 18', 'Malmö', '+46736369741', 'bjorn@gmail.com');
-
-INSERT INTO "instructor" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19620523-0553';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19620523-0554', 'Karin', 'Karlsson', 'Sjögatan 3', '12345', 'Uppsala', '+46 8 345 678 90', 'karin@yahoo.com');
-
-INSERT INTO "instructor" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19620523-0554';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19620523-0555', 'Göran', 'Gustafsson', 'Åsgatan 8', '12345', 'Linköping', '+46 8 456 789 01', 'goran@gmail.com');
-
-INSERT INTO "instructor" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19620523-0555';
-
+-- Populate the "instructor_instrument" table with instruments
+call p_add_instructor_instruments('Erik', 'Eriksson', ARRAY['piano', 'guitar', 'harp']);
+call p_add_instructor_instruments('Anna', 'Andersson' ARRAY['drums', 'piano']);
+call p_add_instructor_instruments('Björn', 'Borg', ARRAY['piano', 'saxophone', 'flute', 'trumpet', 'clarinet]);
+call p_add_instructor_instruments('Karin', 'Karlsson', ARRAY['clarinet', 'violin','guitar']);
+call p_add_instructor_instruments('Göran', 'Gustafsson', ARRAY['clarinet', 'drums','trumpet','bass guitar']);
 
 -- Insert 5 students into the "person" and "student" tables
 -- Students with three siblings sharing the same last name and address
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19901001-1111', 'Oliver', 'Andersson', 'Västergatan 1', '12345', 'Stockholm', '+46 8 111 222 33', 'oliver@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19901001-1111';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19902001-1112', 'Emma', 'Andersson', 'Västergatan 1', '12345', 'Stockholm', '+46 8 222 333 44', 'emma@yahoo.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19902001-1112';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19901007-1113', 'Liam', 'Andersson', 'Västergatan 1', '12345', 'Stockholm', '+46 8 333 444 55', 'liam@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19901007-1113';
+call p_add_student('19901001-1111', 'Oliver', 'Andersson', 'Västergatan 1', '12345', 'Stockholm', '+46 8 111 222 33', 'oliver@gmail.com');
+call p_add_student('19902001-1112', 'Emma', 'Andersson', 'Västergatan 1', '12345', 'Stockholm', '+46 8 222 333 44', 'emma@yahoo.com');
+call p_add_student('19901007-1113', 'Liam', 'Andersson', 'Västergatan 1', '12345', 'Stockholm', '+46 8 333 444 55', 'liam@gmail.com');
 
 -- Students with two siblings sharing the same last name and address
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19901101-2221', 'Mia', 'Björk', 'Solgatan 5', '54321', 'Göteborg', '+46 31 555 666 77', 'mia@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19901101-2221';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19901211-2222', 'Lucas', 'Björk', 'Solgatan 5', '54321', 'Göteborg', '+46 31 666 777 88', 'lucas@yahoo.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19901211-2222';
+call p_add_student('19901101-2221', 'Mia', 'Björk', 'Solgatan 5', '54321', 'Göteborg', '+46 31 555 666 77', 'mia@gmail.com');
+call p_add_student('19901211-2222', 'Lucas', 'Björk', 'Solgatan 5', '54321', 'Göteborg', '+46 31 666 777 88', 'lucas@yahoo.com');
 
 -- Another set of students with two siblings sharing the same last name and address
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19901201-3331', 'Ella', 'Larsson', 'Rosengatan 2', '65432', 'Malmö', '+46736366661', 'ella@gmail.com');
+call p_add_student('19901201-3331', 'Ella', 'Larsson', 'Rosengatan 2', '65432', 'Malmö', '+46736366661', 'ella@gmail.com');
+call p_add_student('19951201-3332', 'Noah', 'Larsson', 'Rosengatan 2', '65432', 'Malmö', '+46736366662', 'noah@yahoo.com');
 
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19901201-3331';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19951201-3332', 'Noah', 'Larsson', 'Rosengatan 2', '65432', 'Malmö', '+46736366662', 'noah@yahoo.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19951201-3332';
-
--- Insert 40 students into the "person" and "student" tables
 -- Students with no siblings
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910222-4441', 'William', 'Gustafsson', 'Mångatan 4', '98765', 'Uppsala', '+46 18 888 999 00', 'william@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910222-4441';
+call p_add_student('19910222-4441', 'William', 'Gustafsson', 'Mångatan 4', '98765', 'Uppsala', '+46 18 888 999 00', 'william@gmail.com');
 
 -- Students with a sibling
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910301-5551', 'Lilly', 'Karlsson', 'Björkgatan 6', '34567', 'Stockholm', '+46 8 111 222 33', 'lilly@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910301-5551';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19820301-5552', 'Charlie', 'Karlsson', 'Björkgatan 6', '34567', 'Stockholm', '+46 8 222 333 44', 'charlie@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19820301-5552';
+call p_add_student('19910301-5551', 'Lilly', 'Karlsson', 'Björkgatan 6', '34567', 'Stockholm', '+46 8 111 222 33', 'lilly@gmail.com');
+call p_add_student('19820301-5552', 'Charlie', 'Karlsson', 'Björkgatan 6', '34567', 'Stockholm', '+46 8 222 333 44', 'charlie@gmail.com');
 
 -- Students with two siblings
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910401-6661', 'Sophia', 'Larsson', 'Skogsgatan 7', '54321', 'Göteborg', '+46 31 111 222 33', 'sophia@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910401-6661';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('20010612-6662', 'Aiden', 'Larsson', 'Skogsgatan 7', '54321', 'Göteborg', '+46 31 222 333 44', 'aiden@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '20010612-6662';
+call p_add_student('19910401-6661', 'Sophia', 'Larsson', 'Skogsgatan 7', '54321', 'Göteborg', '+46 31 111 222 33', 'sophia@gmail.com');
+call p_add_student('20010612-6662', 'Aiden', 'Larsson', 'Skogsgatan 7', '54321', 'Göteborg', '+46 31 222 333 44', 'aiden@gmail.com');
 
 -- Students with three siblings
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910501-7771', 'Mila', 'Andersson', 'Sjögatan 5', '43210', 'Malmö', '+46736366663', 'mila@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910501-7771';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('20000912-7772', 'Henry', 'Andersson', 'Sjögatan 5', '43210', 'Malmö', '+46736366664', 'henry@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '20000912-7772';
+call p_add_student('19910501-7771', 'Mila', 'Andersson', 'Sjögatan 5', '43210', 'Malmö', '+46736366663', 'mila@gmail.com');
+call p_add_student('20000912-7772', 'Henry', 'Andersson', 'Sjögatan 5', '43210', 'Malmö', '+46736366664', 'henry@gmail.com');
 
 -- Insert more students with random data
 -- Students with no siblings
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910601-8881', 'Isabella', 'Eriksson', 'Åsgatan 3', '12345', 'Stockholm', '+46 8 555 666 77', 'isabella@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910601-8881';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910701-9991', 'Alexander', 'Svensson', 'Lillgatan 9', '54321', 'Göteborg', '+46 31 777 888 99', 'alexander@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910701-9991';
+call p_add_student('19910601-8881', 'Isabella', 'Eriksson', 'Åsgatan 3', '12345', 'Stockholm', '+46 8 555 666 77', 'isabella@gmail.com');
+call p_add_student('19910701-9991', 'Alexander', 'Svensson', 'Lillgatan 9', '54321', 'Göteborg', '+46 31 777 888 99', 'alexander@gmail.com');
 
 -- Students with a sibling
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910801-1010', 'Elsa', 'Nilsson', 'Bergsgatan 1', '98765', 'Uppsala', '+46 18 123 456 78', 'elsa@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910801-1010';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910802-2010', 'Oscar', 'Nilsson', 'Bergsgatan 1', '98765', 'Uppsala', '+46 18 234 567 89', 'oscar@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910802-2010';
+call p_add_student('19910801-1010', 'Elsa', 'Nilsson', 'Bergsgatan 1', '98765', 'Uppsala', '+46 18 123 456 78', 'elsa@gmail.com');
+call p_add_student('19910802-2010', 'Oscar', 'Nilsson', 'Bergsgatan 1', '98765', 'Uppsala', '+46 18 234 567 89', 'oscar@gmail.com');
 
 -- Students with two siblings
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19910901-1111', 'Agnes', 'Björk', 'Norrgatan 2', '12345', 'Stockholm', '+46 8 987 654 32', 'agnes@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19910901-1111';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19920201-1111', 'Viktor', 'Björk', 'Norrgatan 2', '12345', 'Stockholm', '+46 8 876 543 21', 'victor@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19920201-1111';
+call p_add_student('19910901-1111', 'Agnes', 'Björk', 'Norrgatan 2', '12345', 'Stockholm', '+46 8 987 654 32', 'agnes@gmail.com');
+call p_add_student('19920201-1111', 'Viktor', 'Björk', 'Norrgatan 2', '12345', 'Stockholm', '+46 8 876 543 21', 'victor@gmail.com');
 
 -- Students with three siblings
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19911001-1211', 'Selma', 'Lundqvist', 'Gatan 3', '43210', 'Malmö', '+46736377771', 'selma@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19911001-1211';
-
-INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-VALUES
-    ('19941001-1212', 'Nils', 'Lundqvist', 'Gatan 3', '43210', 'Malmö', '+46736377772', 'nils@gmail.com');
-
-INSERT INTO "student" ("person_id")
-SELECT "id" FROM "person" WHERE "personal_identity_number" = '19914001-1212';
-
+call p_add_student('19911001-1211', 'Selma', 'Lundqvist', 'Gatan 3', '43210', 'Malmö', '+46736377771', 'selma@gmail.com');
+call p_add_student('19941001-1212', 'Nils', 'Lundqvist', 'Gatan 3', '43210', 'Malmö', '+46736377772', 'nils@gmail.com');
 
 -- Populate the "sibling" table based on students with the same last name and address
-INSERT INTO "sibling" ("sibling_1", "sibling_2")
-SELECT DISTINCT s1."id", s2."id"
-FROM "student" s1
-JOIN "student" s2 ON s1."id" < s2."id"  -- Ensure students are different
-JOIN "person" p1 ON s1."person_id" = p1."id"
-JOIN "person" p2 ON s2."person_id" = p2."id"
-WHERE p1."last_name" = p2."last_name"
-  AND p1."street" = p2."street"
-  AND p1."zip" = p2."zip"
-  AND p1."city" = p2."city";
+call locate_and_populate_siblings_table();
 
-
--- populate contact_person
+-- Populate contact persons
 INSERT INTO "contact_person" ("first_name", "last_name", "phone", "email")
 VALUES
     ('John', 'Doe', '+467123456789', 'john.doe@gmail.com'),
@@ -368,77 +461,42 @@ VALUES
 
 
 -- Populate the "student_contact_person" table with parent, guardian, and grandparent relationships
-INSERT INTO "student_contact_person" ("student_id", "contact_person_id", "relation")
-VALUES
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Oliver' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Andersson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Emma' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Andersson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Liam' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Andersson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Mia' AND "last_name" = 'Björk')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Björk'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Lucas' AND "last_name" = 'Björk')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Lena' AND "last_name" = 'Björk'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Ella' AND "last_name" = 'Larsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Larsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Noah' AND "last_name" = 'Larsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Larsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Lilly' AND "last_name" = 'Karlsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Karlsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Charlie' AND "last_name" = 'Karlsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Peter' AND "last_name" = 'Karlsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Sophia' AND "last_name" = 'Larsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Henrik' AND "last_name" = 'Larsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Aiden' AND "last_name" = 'Larsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Henrik' AND "last_name" = 'Larsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Mila' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ragnar' AND "last_name" = 'Andersson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Henry' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ragnar' AND "last_name" = 'Andersson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Elsa' AND "last_name" = 'Nilsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Emma' AND "last_name" = 'Nilsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Oscar' AND "last_name" = 'Nilsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Emma' AND "last_name" = 'Nilsson'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Agnes' AND "last_name" = 'Björk')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ritva' AND "last_name" = 'Björk'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Viktor' AND "last_name" = 'Björk')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Ritva' AND "last_name" = 'Björk'), 
-     'Parent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'William' AND "last_name" = 'Gustafsson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'John' AND "last_name" = 'Doe'), 
-     'Grandparent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Selma' AND "last_name" = 'Lundqvist')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Jane' AND "last_name" = 'Smith'), 
-     'Grandparent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Isabella' AND "last_name" = 'Eriksson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Robert' AND "last_name" = 'Johnson'), 
-     'Grandparent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Oliver' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Sarah' AND "last_name" = 'Wilson'), 
-     'Grandparent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Emma' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Sarah' AND "last_name" = 'Wilson'), 
-     'Grandparent'),
-     ((SELECT "id" FROM "student" WHERE "person_id" = (SELECT "id" FROM "person" WHERE "first_name" = 'Liam' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "contact_person" WHERE "first_name" = 'Sarah' AND "last_name" = 'Wilson'), 
-     'Grandparent');
+CALL p_add_student_contact_person('Oliver', 'Andersson', 'Lena', 'Andersson', 'Parent');
+CALL p_add_student_contact_person('Emma', 'Andersson', 'Lena', 'Andersson', 'Parent');
+CALL p_add_student_contact_person('Liam', 'Andersson', 'Lena', 'Andersson', 'Parent');
+
+CALL p_add_student_contact_person('Mia', 'Björk', 'Lena', 'Björk', 'Parent');
+CALL p_add_student_contact_person('Lucas', 'Björk', 'Lena', 'Björk', 'Parent');
+
+CALL p_add_student_contact_person('Ella', 'Larsson', 'Peter', 'Larsson', 'Parent');
+CALL p_add_student_contact_person('Noah', 'Larsson', 'Peter', 'Larsson', 'Parent');
+
+CALL p_add_student_contact_person('Lilly', 'Karlsson', 'Peter', 'Karlsson', 'Parent');
+CALL p_add_student_contact_person('Charlie', 'Karlsson', 'Peter', 'Karlsson', 'Parent');
+
+CALL p_add_student_contact_person('Sophia', 'Larsson', 'Henrik', 'Larsson', 'Parent');
+CALL p_add_student_contact_person('Aiden', 'Larsson', 'Henrik', 'Larsson', 'Parent');
+
+CALL p_add_student_contact_person('Mila', 'Andersson', 'Ragnar', 'Andersson', 'Parent');
+CALL p_add_student_contact_person('Henry', 'Andersson', 'Ragnar', 'Andersson', 'Parent');
+
+CALL p_add_student_contact_person('Elsa', 'Nilsson', 'Emma', 'Nilsson', 'Parent');
+CALL p_add_student_contact_person('Oscar', 'Nilsson', 'Emma', 'Nilsson', 'Parent');
+
+CALL p_add_student_contact_person('Agnes', 'Björk', 'Ritva', 'Björk', 'Parent');
+CALL p_add_student_contact_person('Viktor', 'Björk', 'Ritva', 'Björk', 'Parent');
+
+CALL p_add_student_contact_person('William', 'Gustafsson', 'John', 'Doe', 'Grandparent');
+
+CALL p_add_student_contact_person('Selma', 'Lundqvist', 'Jane', 'Smith', 'Grandparent');
+
+CALL p_add_student_contact_person('Isabella', 'Eriksson', 'Robert', 'Johnson', 'Grandparent');
+
+CALL p_add_student_contact_person('Oliver', 'Andersson', 'Sarah', 'Wilson', 'Grandparent');
+
+CALL p_add_student_contact_person('Emma', 'Andersson', 'Sarah', 'Wilson', 'Grandparent');
+
+CALL p_add_student_contact_person('Liam', 'Andersson', 'Sarah', 'Wilson','Grandparent');
 
 
 -- Populate the "ensemble_price" table with ensemble prices and genres
@@ -529,79 +587,6 @@ FROM (
 JOIN "instrument" AS "i" ON "p"."instrument_name" = "i"."name"
 JOIN "skill_level" AS "s" ON "p"."skill_level_name" = "s"."level"
 WHERE "i"."name" NOT IN ('harp', 'clarinet');
-
--- Populate the "instructor_instrument" table with parent, guardian, and grandparent relationships TODO LOL
-INSERT INTO "instructor_instrument" ("instructor_id", "instrument_id")
-VALUES
-     ((SELECT "id" FROM "instructor" 
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Erik' AND "last_name" = 'Eriksson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'piano')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Erik' AND "last_name" = 'Eriksson')), 
-     (SELECT "id" FROM "instrument" WHERE "name" = 'guitar')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Erik' AND "last_name" = 'Eriksson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'harp')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Anna' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'drums')),
-     ((SELECT "id" FROM "instructor" 
-        WHERE "person_id" = (
-            SELECT "id" FROM "person"  WHERE "first_name" = 'Anna' AND "last_name" = 'Andersson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'piano')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'piano')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
-     (SELECT "id" FROM "instrument"  WHERE "name" = 'saxophone')),
-     ((SELECT "id" FROM "instructor" 
-        WHERE "person_id" = (
-            SELECT "id" FROM "person"  WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'flute')),
-     ((SELECT "id" FROM "instructor" 
-        WHERE "person_id" = (
-            SELECT "id" FROM "person"  WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'trumpet')),
-     ((SELECT "id" FROM "instructor" 
-        WHERE "person_id" = (
-            SELECT "id" FROM "person"  WHERE "first_name" = 'Björn' AND "last_name" = 'Borg')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Karin' AND "last_name" = 'Karlsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Karin' AND "last_name" = 'Karlsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'violin')),
-     ((SELECT "id" FROM "instructor" 
-        WHERE "person_id" = (
-            SELECT "id" FROM "person"  WHERE "first_name" = 'Karin' AND "last_name" = 'Karlsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'guitar')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Göran' AND "last_name" = 'Gustafsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'clarinet')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Göran' AND "last_name" = 'Gustafsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'drums')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Göran' AND "last_name" = 'Gustafsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'trumpet')),
-     ((SELECT "id" FROM "instructor"  
-        WHERE "person_id" = (
-            SELECT "id" FROM "person" WHERE "first_name" = 'Göran' AND "last_name" = 'Gustafsson')),
-     (SELECT "id" FROM "instrument" WHERE "name" = 'bass guitar'));
-
 
 -- populate "session" table
 INSERT INTO "session" ("start_time", "end_time")
