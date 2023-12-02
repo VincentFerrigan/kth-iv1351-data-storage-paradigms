@@ -1,4 +1,5 @@
-# Diskussioner
+# Task 1
+## Diskussioner
 
 * Kontaktuppgifts tabell med personID som aktörerna är kopplade till. Eller en
   supertyp PERSON som aktörerna "subtypas" ifrån. 
@@ -39,7 +40,7 @@ One price for beginner and intermediate, and one for advanced. -- Men kommer det
 have the same price for beginners and intermediate lessons
 
 
-# OTHER COMMENTS
+## OTHER COMMENTS
 * Choose a naming convention and style guide:
   D = WE WILL USE MOZILLA
   * https://www.sqlstyle.guide/
@@ -52,3 +53,36 @@ have the same price for beginners and intermediate lessons
 * Students pay per lesson and instructors get payed per lesson
 Vilka bokar lektioner direkt och indirekt?
 elivery-address? Billing address? Home-address?
+
+# TASK 2
+* Should prices have an end_date? end_date with null acceptence? 
+
+* What about submitting attendent to the school. "Someone wants to attend the school, they submit contact details, which instrument they want to learn, and their present skill. "
+
+* class_room table with class_room_id FK in session.
+* inheritence, pros cons
+
+* triggers:
+    * lessons - price_list
+    * session-lesson
+
+* view for price list. 
+
+* create_script
+
+* the case for and against enums
+
+SERIAL??
+https://wiki.postgresql.org/wiki/Don%27t_Do_This#Don.27t_use_serial
+https://stackoverflow.com/questions/64016778/better-to-use-serial-primary-key-or-generated-always-as-identity-for-primary-key?rq=1
+
+## Pricing issues
+https://softwareengineering.stackexchange.com/questions/328531/how-to-design-er-diagram-to-allow-for-retrieving-of-product-option-pricing-data/328535#328535
+https://softwareengineering.stackexchange.com/questions/329867/when-keeping-product-price-change-history-what-are-the-proscons-of-keeping-tra
+https://dba.stackexchange.com/questions/176935/how-would-i-track-all-price-changes-in-a-db-in-order-to-get-the-price-of-x-pro
+
+
+
+## PROCEDURES vs FUNCTIONS
+"Procedures handle transactions differently to functions. Functions are executed within a transaction, so that any changes made are rolled back if any part of that transaction fails. Procedures do not execute within a transaction – any commands executed up to the point of failure within a procedure will have taken effect on the database and will not be rolled back on the failure of a following step."
+https://www.linuxscrew.com/postgresql-stored-functions-procedures-difference
