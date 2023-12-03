@@ -336,3 +336,81 @@ BEGIN
     VALUES (studentID, sessionID);
 END;
 $$;
+
+CREATE OR REPLACE PROCEDURE p_add_rentable_instrument(
+    instrumentName VARCHAR(100),
+    brandName VARCHAR(100),
+    n INT
+) LANGUAGE plpgsql AS $$
+DECLARE
+    instrumentID INT;
+    brandID INT;
+    i INT;  -- Loop counter
+BEGIN
+    -- Retrieve the instrument ID
+    SELECT "id" INTO instrumentID FROM "instrument" 
+    WHERE "name" = instrumentName;
+
+    -- Retrieve the brand ID
+    SELECT "id" INTO brandID FROM "brand" 
+    WHERE "name" = brandName;
+
+    -- Loop to insert 'n' times
+    FOR i IN 1..n LOOP
+        INSERT INTO "rentable_instrument" ("instrument_id", "brand_id")
+        VALUES (instrumentID, brandID);
+    END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE p_rent_an_instrument(
+    student_personal_identity_number CHAR(13),
+    instrumentName VARCHAR(100),
+    brandName VARCHAR(100)
+) LANGUAGE plpgsql AS $$
+
+DECLARE
+    studentID    INT;
+    instrumentID INT;
+    brandID      INT;
+    nbrOfRents   INT;
+    rentableInstrumentID INT;
+    maxRentables INT;
+    leaseDuration INT;
+BEGIN
+    -- Retrieve the maximum number of rentables and lease duration from configuration
+    SELECT config_value INTO maxRentables FROM system_configuration WHERE config_key = 'max_rentables_per_student';
+    SELECT config_value INTO leaseDuration FROM system_configuration WHERE config_key = 'lease_duration_months';
+
+    -- Retrieve the student ID
+    SELECT fn_student_id(student_personal_identity_number) INTO studentID;
+
+    -- Retrieve the instrument ID
+    SELECT "id" INTO instrumentID FROM "instrument" WHERE "name" = instrumentName;
+
+    -- Retrieve the brand ID
+    SELECT "id" INTO brandID FROM "brand" WHERE "name" = brandName;
+
+    -- Retrieve the number of rents
+    SELECT fn_count_nbr_of_rents(studentID) INTO nbrOfRents;
+    
+    -- Check if the student already has the maximum number of rentals
+    IF nbrOfRents >= maxRentables THEN
+        RAISE EXCEPTION 'Student is not allowed to rent more than % instruments at the time', maxRentables;
+    END IF;
+
+    -- Retrieve rentable instrument ID
+    SELECT fn_rentable_instrument_id(instrumentID, brandID) INTO rentableInstrumentID;
+
+    IF rentableInstrumentID IS NULL THEN
+        RAISE EXCEPTION 'The requested instrument and brand is not in stock';
+    END IF;
+
+    -- Insert rental with configurable lease duration
+    -- Note to self/dev: In SQL, the || operator is used for string concatenation.
+    INSERT INTO "rentals" ("student_id", "rentable_instrument_id", "time_of_rent", "lease_end_time")
+    VALUES (studentID, rentableInstrumentID, CURRENT_TIMESTAMP, 
+        (CURRENT_TIMESTAMP + (leaseDuration || ' months')::INTERVAL));
+END;
+$$;
+

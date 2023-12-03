@@ -7,48 +7,26 @@
 -- Course         : kth IV1351 Data Storage Paradigms
 -- Author/Student : Elin Blomquist, Vincent Ferrigan
 -- maintainer     : eblomq@kth.se, ferrigan@kth.se,
--- POPULATE
+
 -- Course Type
 INSERT INTO "course_type" ("name") VALUES 
-      ('individual')
-    , ('group')
-    , ('ensemble')
-    ;
+    ('individual'), 
+    ('group'), 
+    ('ensemble');
 
 -- Genre    
 INSERT INTO "genre" ("name") VALUES
-  ('gospel'),
-  ('punk'),
-  ('rock'),
-  ('jazz'),
-  ('hip-hop'),
-  ('country'),
-  ('electronic'),
-  ('reggae'),
-  ('blues'),
-  ('classical');
-
+  ('gospel'), ('punk'), ('rock'), ('jazz'),  ('hip-hop'),  ('country'),
+  ('electronic'), ('reggae'), ('blues'), ('classical');
 
 -- Skill levels
 INSERT INTO "skill_level" ("name") VALUES
-  ('beginner'),
-  ('intermediate'),
-  ('advanced');
-
+  ('beginner'), ('intermediate'), ('advanced');
 
 -- Insert instrument names
 INSERT INTO "instrument" ("name") VALUES
-  ('guitar'),
-  ('piano'),
-  ('violin'),
-  ('drums'),
-  ('saxophone'),
-  ('flute'),
-  ('trumpet'),
-  ('bass guitar'),
-  ('clarinet'),
-  ('harp');
-
+  ('guitar'), ('piano'), ('violin'), ('drums'), ('saxophone'), ('flute'), 
+  ('trumpet'), ('bass guitar'), ('clarinet'), ('harp');
 
 -- Insert brand names for instruments
 INSERT INTO "brand" ("name") VALUES
@@ -71,45 +49,23 @@ INSERT INTO "brand" ("name") VALUES
   ('gemeinhardt'),    -- Known for student and intermediate flutes
   ('muramatsu');      -- Known for professional flutes, especially in the classical music world
 
-
--- Define rentable instruments and match them with instrument and brand IDs (five of each)
-INSERT INTO "rentable_instrument" ("instrument_id", "brand_id")
-SELECT "i"."id", "b"."id"
-FROM (
-  VALUES
-    ('guitar', 'gibson'),
-    ('guitar', 'fender'),
-    ('guitar', 'ibanez'),
-    ('piano', 'yamaha'),
-    ('piano', 'steinway & sons'),
-    ('violin', 'stradivarius'),
-    ('drums', 'pearl'),
-    ('drums', 'ludwig'),
-    ('saxophone', 'selmer'),
-    ('flute', 'miyazawa'),
-    ('flute', 'gemeinhardt'),
-    ('flute', 'muramatsu'),
-    ('trumpet', 'yamaha'),
-    ('bass guitar', 'fender'),
-    ('clarinet', 'selmer'),
-    ('harp', 'celtic harps')
-) AS "ri" ("instrument_name", "brand_name")
-JOIN "instrument" AS "i" ON "ri"."instrument_name" = "i"."name"
-JOIN "brand" AS "b" ON "ri"."brand_name" = "b"."name";
-
--- Duplicate the entries to have five of each instrument (adjust the number as needed)
-INSERT INTO "rentable_instrument" ("instrument_id", "brand_id")
-SELECT "instrument_id", "brand_id"
-FROM "rentable_instrument"
-UNION ALL
-SELECT "instrument_id", "brand_id"
-FROM "rentable_instrument"
-UNION ALL
-SELECT "instrument_id", "brand_id"
-FROM "rentable_instrument"
-UNION ALL
-SELECT "instrument_id", "brand_id"
-FROM "rentable_instrument";
+-- Populate rentable_instrument
+CALL p_add_rentable_instrument('guitar', 'gibson', 5);
+CALL p_add_rentable_instrument('guitar', 'fender', 5);
+CALL p_add_rentable_instrument('guitar', 'ibanez', 5);
+CALL p_add_rentable_instrument('piano', 'yamaha', 5);
+CALL p_add_rentable_instrument('piano', 'steinway & sons', 5);
+CALL p_add_rentable_instrument('violin', 'stradivarius', 5);
+CALL p_add_rentable_instrument('drums', 'pearl', 5);
+CALL p_add_rentable_instrument('drums', 'ludwig', 5);
+CALL p_add_rentable_instrument('saxophone', 'selmer', 5);
+CALL p_add_rentable_instrument('flute', 'miyazawa', 5);
+CALL p_add_rentable_instrument('flute', 'gemeinhardt', 5);
+CALL p_add_rentable_instrument('flute', 'muramatsu', 5);
+CALL p_add_rentable_instrument('trumpet', 'yamaha', 5);
+CALL p_add_rentable_instrument('bass guitar', 'fender', 5);
+CALL p_add_rentable_instrument('clarinet', 'selmer', 5);
+CALL p_add_rentable_instrument('harp', 'celtic harps', 5);
 
 -- Insert 5 instructors into the "person" and "instructor" tables
 call p_add_instructor('19620523-0551', 'Erik', 'Eriksson', 'Storgatan 5', '12345', 'Stockholm', '+46 8 123 456 78', 'erik@gmail.com');
@@ -191,7 +147,6 @@ VALUES
     ('Emma', 'Nilsson', '+467495546774', 'emma.nilsson@gmail.com'),
     ('Ritva', 'Björk', '+467445596772', 'ritva.bjork@gmail.com');
 
-
 -- Populate the "student_contact_person" table with parent, guardian, and grandparent relationships
 CALL p_add_student_contact_person('Oliver', 'Andersson', 'Lena', 'Andersson', 'Parent');
 CALL p_add_student_contact_person('Emma', 'Andersson', 'Lena', 'Andersson', 'Parent');
@@ -240,7 +195,6 @@ CALL p_add_rental_price('trumpet', 100.00);
 CALL p_add_rental_price('bass guitar', 100);
 CALL p_add_rental_price('clarinet', 100);
 CALL p_add_rental_price('harp', 200;
-
 
 -- Populate lesson price list table
 CALL p_add_lesson_price('ensemble', 125);

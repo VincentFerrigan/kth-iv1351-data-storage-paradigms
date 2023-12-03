@@ -190,3 +190,70 @@ BEGIN
     RETURN sessionID;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_count_nbr_of_rents(
+    studentID INT
+) RETURNS INT AS $$
+DECLARE
+    nbrOfRents INT;
+BEGIN
+    SELECT COUNT(*)
+    INTO nbrOfRents
+    FROM "rentals"
+    WHERE "student_id" = studentID AND "return_time" IS NULL;
+
+    RETURN nbrOfRents;
+END;
+$$ LANGUAGE plpgsql;
+
+--  Find a rentable instrument ID based on both the instrument type and brand,
+--  while also ensuring that the instrument is not currently rented out.
+CREATE OR REPLACE FUNCTION fn_rentable_instrument_id(
+    instrumentID INT,
+    brandID INT
+) RETURNS INT AS $$
+DECLARE
+    rentableInstrumentID INT;
+BEGIN
+    SELECT "id"
+    INTO rentableInstrumentID
+    FROM "rentable_instrument" ri
+    WHERE ri."instrument_id" = instrumentID AND ri."brand_id" = brandID
+      AND NOT EXISTS (
+          SELECT 1
+          FROM "rentals" r
+          WHERE r."rentable_instrument_id" = ri."id"
+            AND r."return_time" IS NULL
+      )
+    ORDER BY RANDOM()
+    LIMIT 1;
+
+    RETURN rentableInstrumentID;
+END;
+$$ LANGUAGE plpgsql;
+
+--  Find a rentable instrument ID based on instrument,
+--  while also ensuring that the instrument is not currently rented out.
+CREATE OR REPLACE FUNCTION fn_rentable_instrument_id(
+    instrumentID INT
+) RETURNS INT AS $$
+DECLARE
+    rentableInstrumentID INT;
+BEGIN
+    SELECT "id"
+    INTO rentableInstrumentID
+    FROM "rentable_instrument" ri
+    WHERE ri."instrument_id" = instrumentID
+      AND NOT EXISTS (
+          SELECT 1
+          FROM "rentals" r
+          WHERE r."rentable_instrument_id" = ri."id"
+            AND r."return_time" IS NULL
+      )
+    ORDER BY RANDOM()
+    LIMIT 1;
+
+    RETURN rentableInstrumentID;
+END;
+$$ LANGUAGE plpgsql;
+
