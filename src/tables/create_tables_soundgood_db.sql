@@ -1,6 +1,6 @@
 -- postgreSQL
 -- file           : create_tables_soundgood_db.sql
--- Module         : task 2
+-- Module         : Script for table creation
 -- Description    : Seminar 2, Conceptual Model
 --                 
 -- Course         : kth IV1351 Data Storage Paradigms
