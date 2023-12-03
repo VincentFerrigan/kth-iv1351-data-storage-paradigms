@@ -8,32 +8,6 @@
 -- maintainer     : eblomq@kth.se, ferrigan@kth.se,
 -- FUNCTIONS
 
--- Insert new person and return their id.
--- OI : Should I make it a procedure!???????????? Don't let function insert!!
-CREATE OR REPLACE FUNCTION fn_add_person(
-      pid CHAR(13)
-    , firstName VARCHAR(100)
-    , lastName VARCHAR(100)
-    , street VARCHAR(100)
-    , zip VARCHAR(10)
-    , city VARCHAR(100)
-    , phone VARCHAR(50)
-    , email VARCHAR(100)
-    ) RETURNS INT as $$
-
--- Variable to hold the newly inserted person ID
-DECLARE 
-	new_person_id INT;
-BEGIN
-    -- Insert a the person and capture its ID
-    INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
-    VALUES (pid, firstName, lastName, street, zip, city, phone, email) 
-        RETURNING id INTO new_person_id;
-    -- Insert the new person as student
-    RETURN new_person_id;
-END;
-$$  LANGUAGE plpgsql;
-
 -- Return instructor id based on first and last name
 CREATE OR REPLACE FUNCTION fn_instructor_id(
        firstName VARCHAR(100), 

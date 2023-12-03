@@ -23,7 +23,9 @@ CREATE OR REPLACE PROCEDURE p_add_student(
 DECLARE
 	new_person_id INT;
 BEGIN
-	new_person_id := fn_add_person(pid, firstName, lastName, street, zip, city, phone, email);
+    INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
+    VALUES (pid, firstName, lastName, street, zip, city, phone, email) 
+        RETURNING id INTO new_person_id;
 	INSERT INTO "student" ("person_id") VALUES (new_person_id);
 END;
 $body$  LANGUAGE plpgsql;
@@ -41,7 +43,9 @@ CREATE OR REPLACE PROCEDURE p_add_instructor(
 DECLARE
 	new_person_id INT;
 BEGIN
-	new_person_id := fn_add_person(pid, firstName, lastName, street, zip, city, phone, email);
+    INSERT INTO "person" ("personal_identity_number", "first_name", "last_name", "street", "zip", "city", "phone", "email")
+    VALUES (pid, firstName, lastName, street, zip, city, phone, email) 
+        RETURNING id INTO new_person_id;
 	INSERT INTO "instructor" ("person_id") VALUES (new_person_id);
 END;
 $body$  LANGUAGE plpgsql;
