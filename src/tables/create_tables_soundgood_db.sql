@@ -118,17 +118,17 @@ CREATE TABLE "instructor" (
       ON DELETE CASCADE
 );
 
-CREATE TABLE "instructor_booking" (
-  "instructor_id" INT NOT NULL,
-  "session_id" INT UNIQUE NOT NULL,
-  CONSTRAINT "fk.instructor"
-    FOREIGN KEY ("instructor_id")
-      REFERENCES "instructor"("id"),
-  CONSTRAINT "fk.session"
-    FOREIGN KEY ("session_id")
-      REFERENCES "session"("id"),
-  PRIMARY KEY ("instructor_id", "session_id")
-);
+-- CREATE TABLE "instructor_booking" (
+--   "instructor_id" INT NOT NULL,
+--   "session_id" INT UNIQUE NOT NULL,
+--   CONSTRAINT "fk.instructor"
+--     FOREIGN KEY ("instructor_id")
+--       REFERENCES "instructor"("id"),
+--   CONSTRAINT "fk.session"
+--     FOREIGN KEY ("session_id")
+--       REFERENCES "session"("id"),
+--   PRIMARY KEY ("instructor_id", "session_id")
+-- );
 
 CREATE TABLE "student_booking" (
   "student_id" INT NOT NULL,

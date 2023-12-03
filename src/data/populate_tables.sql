@@ -8,20 +8,30 @@
 -- Author/Student : Elin Blomquist, Vincent Ferrigan
 -- maintainer     : eblomq@kth.se, ferrigan@kth.se,
 
+-- CONFIGURATIONS
+-- These magic numbers are subject to change or might differ based on business logic,
+-- OPEN ISSUE: the script for creating the system_configuration table fits well
+-- in a schema or database directory within src/, while the script for inserting
+-- configuration keys and values could go into either config/ or a data-seeding
+-- directory within src/, depending on how you view these configurations in the
+-- context of your application setup and deployment.
+INSERT INTO system_configuration (config_key, config_value) 
+VALUES ('max_rentables_per_student', 2),
+       ('min_siblings_for_discount', 2),
+       ('lease_duration_months', 12);
+
 -- Course Type
-INSERT INTO "course_type" ("name") VALUES 
-    ('individual'), 
-    ('group'), 
-    ('ensemble');
+INSERT INTO "course_type" ("name") 
+VALUES ('individual'), ('group'), ('ensemble');
 
 -- Genre    
-INSERT INTO "genre" ("name") VALUES
-  ('gospel'), ('punk'), ('rock'), ('jazz'),  ('hip-hop'),  ('country'),
-  ('electronic'), ('reggae'), ('blues'), ('classical');
+INSERT INTO "genre" ("name") 
+VALUES ('gospel'), ('punk'), ('rock'), ('jazz'), ('hip-hop'), 
+('country'),('electronic'), ('reggae'), ('blues'), ('classical');
 
 -- Skill levels
-INSERT INTO "skill_level" ("name") VALUES
-  ('beginner'), ('intermediate'), ('advanced');
+INSERT INTO "skill_level" ("name") 
+VALUES ('beginner'), ('intermediate'), ('advanced');
 
 -- Insert instrument names
 INSERT INTO "instrument" ("name") VALUES
@@ -29,32 +39,20 @@ INSERT INTO "instrument" ("name") VALUES
   ('trumpet'), ('bass guitar'), ('clarinet'), ('harp');
 
 -- Insert brand names for instruments
-INSERT INTO "brand" ("name") VALUES
-  ('gibson'),        -- Known for guitars
-  ('fender'),        -- Known for guitars
-  ('yamaha'),        -- Known for various instruments, including pianos and keyboards
-  ('roland'),        -- Known for electronic musical instruments
-  ('korg'),          -- Known for synthesizers and electronic instruments
-  ('pearl'),         -- Known for drums and percussion instruments
-  ('ludwig'),        -- Known for drums and percussion instruments
-  ('martin'),        -- Known for acoustic guitars
-  ('taylor'),        -- Known for acoustic guitars
-  ('ibanez'),        -- Known for guitars
-  ('hohner'),        -- Known for harmonicas, including some models of chord harmonicas
-  ('stradivarius'),  -- Known for Stradivarius violins, among the most famous violins in the world
-  ('steinway & sons'),-- Known for high-quality pianos, including grand pianos
-  ('selmer'),         -- Known for saxophones, including the famous Selmer Mark VI saxophone
-  ('celtic harps'),   -- Known for harps, including Celtic-style harps
-  ('miyazawa'),       -- Known for high-quality flutes
-  ('gemeinhardt'),    -- Known for student and intermediate flutes
-  ('muramatsu');      -- Known for professional flutes, especially in the classical music world
+INSERT INTO "brand" ("name") 
+VALUES ('gibson'), ('fender'), ('martin'), ('ibanez'), ('yamaha'), ('roland'),
+  ('korg'), ('pearl'), ('ludwig'), ('stradivarius'), ('steinway & sons'),
+  ('selmer'), ('celtic harps'), ('miyazawa'), ('gemeinhardt'), ('muramatsu');
 
 -- Populate rentable_instrument
 CALL p_add_rentable_instrument('guitar', 'gibson', 5);
 CALL p_add_rentable_instrument('guitar', 'fender', 5);
 CALL p_add_rentable_instrument('guitar', 'ibanez', 5);
 CALL p_add_rentable_instrument('piano', 'yamaha', 5);
+CALL p_add_rentable_instrument('piano', 'martin', 5);
 CALL p_add_rentable_instrument('piano', 'steinway & sons', 5);
+CALL p_add_rentable_instrument('piano', 'roland', 5);
+CALL p_add_rentable_instrument('piano', 'korg', 5);
 CALL p_add_rentable_instrument('violin', 'stradivarius', 5);
 CALL p_add_rentable_instrument('drums', 'pearl', 5);
 CALL p_add_rentable_instrument('drums', 'ludwig', 5);
@@ -327,3 +325,12 @@ CALL p_book_individual_lesson('19902001-1112', 'drums', 'intermediate',  '2023-0
 CALL p_book_individual_lesson('19910222-4441', 'clarinet',  'advanced',  '2023-11-20 14:30', '2023-11-20 15:30');
 CALL p_book_individual_lesson('19951201-3332', 'trumpet',  'intermediate','2023-10-15 15:45', '2023-10-15 16:45');
 CALL p_book_individual_lesson('19951201-3332', 'violin','intermediate',  '2023-11-05 16:20', '2023-11-05 17:20');
+
+-- populate rentals
+CALL p_rent_an_instrument('19951201-3332', 'trumpet', 'yamaha');
+CALL p_rent_an_instrument('19901001-1111', 'guitar', 'fender');
+CALL p_rent_an_instrument('19901001-1111', 'trumpet', 'yamaha');
+CALL p_rent_an_instrument('19951201-3332', 'piano', 'yamaha');
+CALL p_rent_an_instrument('19901211-2222', 'saxophone', 'selmer');
+CALL p_rent_an_instrument('19901211-2222', 'clarinet', 'selmer');
+CALL p_rent_an_instrument('19901101-2221', 'bass guitar', 'fender');
