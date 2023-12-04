@@ -212,18 +212,41 @@ CALL p_add_ensemble('rock',      '2023-05-10 16:00', '2023-05-10 17:00', 5, 15);
 CALL p_add_ensemble('rock',      '2023-12-02 14:00', '2023-12-02 15:00', 5, 15);
 CALL p_add_ensemble('rock',      '2023-12-04 19:15', '2023-12-04 20:15', 5, 15);
 
+CALL p_add_ensemble('blues',     '2023-12-05 17:15', '2023-04-02 18:15', 5, 10);
+CALL p_add_ensemble('blues',     '2023-12-06 16:45', '2023-12-03 17:45', 5, 10);
+CALL p_add_ensemble('classical', '2023-12-06 18:00', '2023-12-04 19:00', 5, 10);
+CALL p_add_ensemble('jazz',      '2023-12-07 14:30', '2023-09-28 15:30', 5, 10);
+CALL p_add_ensemble('jazz',      '2023-12-08 15:30', '2023-12-02 16:30', 5, 10);
+CALL p_add_ensemble('rock',      '2023-12-06 17:00', '2023-04-15 18:00', 5, 10);
+CALL p_add_ensemble('rock',      '2023-12-07 16:00', '2023-05-10 17:00', 5, 10);
+CALL p_add_ensemble('rock',      '2023-12-06 14:00', '2023-12-02 15:00', 5, 10);
+CALL p_add_ensemble('rock',      '2023-12-08 19:15', '2023-12-04 20:15', 5, 10);
+
 -- populate the session and group lesson table
 CALL p_add_group_lesson('guitar', 'advanced',     '2023-01-15 14:30', '2023-01-15 15:30', 3, 10);
 CALL p_add_group_lesson('guitar', 'beginner',     '2023-02-03 14:00', '2023-02-03 15:00', 3,10); 
 CALL p_add_group_lesson('trumpet','intermediate', '2023-02-28 14:15', '2023-02-28 15:15', 3, 10);
 CALL p_add_group_lesson('violin', 'advanced', '   2023-03-10 17:45', '2023-03-10 18:45', 3, 10);
 
+
 -- populate student booking table
-CALL p_book_ensemble_for_student('19901001-1111', 'blues', '2023-04-02 17:15');
-CALL p_book_ensemble_for_student('19901001-1111', 'jazz', '2023-09-28 14:30');
-CALL p_book_ensemble_for_student('19901001-1111', 'rock', '2023-12-04 19:15');
-CALL p_book_ensemble_for_student('19901001-1111','rock', '2023-12-02 14:00');
-CALL p_book_ensemble_for_student('19901007-1113', 'blues', '2023-04-02 17:15');
+-- ENSEMBELS
+CALL p_book_ensemble_for_student('19901007-1113', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19901211-2222', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19910601-8881', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19910701-9991', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19910801-1010', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19910802-2010', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19910901-1111', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19911001-1211', 'classical', '2023-12-06 18:00');
+CALL p_book_ensemble_for_student('19920201-1111', 'classical', '2023-12-06 18:00');
+
+-- ENSEMBLES
+CALL p_book_ensemble_for_student('19901001-1111', 'blues',  '2023-04-02 17:15');
+CALL p_book_ensemble_for_student('19901001-1111', 'jazz',   '2023-09-28 14:30');
+CALL p_book_ensemble_for_student('19901001-1111', 'rock',   '2023-12-04 19:15');
+CALL p_book_ensemble_for_student('19901001-1111','rock',    '2023-12-02 14:00');
+CALL p_book_ensemble_for_student('19901007-1113', 'blues',  '2023-04-02 17:15');
 CALL p_book_ensemble_for_student('19901007-1113', 'classical', '2023-12-04 18:00');
 CALL p_book_ensemble_for_student('19901007-1113', 'jazz', '2023-09-28 14:30');
 CALL p_book_ensemble_for_student('19901007-1113', 'jazz', '2023-12-02 15:30');
@@ -326,6 +349,18 @@ CALL p_book_individual_lesson('19910222-4441', 'clarinet',  'advanced',  '2023-1
 CALL p_book_individual_lesson('19951201-3332', 'trumpet',  'intermediate','2023-10-15 15:45', '2023-10-15 16:45');
 CALL p_book_individual_lesson('19951201-3332', 'violin','intermediate',  '2023-11-05 16:20', '2023-11-05 17:20');
 
+CALL p_book_individual_lesson('19901001-1111', 'piano', 'beginner',      '2023-12-05 16:30', '2023-12-05 17:30');
+CALL p_book_individual_lesson('19901007-1113', 'drums', 'beginner',      '2023-12-17 14:45', '2023-12-17 15:45');
+CALL p_book_individual_lesson('19901007-1113', 'drums','advanced',       '2023-12-21 15:30', '2023-12-21 16:30');
+CALL p_book_individual_lesson('19901007-1113', 'flute',  'advanced',     '2023-12-08 15:20', '2023-12-08 16:20');
+CALL p_book_individual_lesson('19901101-2221', 'bass guitar', 'beginner','2023-12-12 18:00', '2023-12-12 19:00');
+CALL p_book_individual_lesson('19901201-3331', 'drums',  'beginner',     '2023-12-03 16:30', '2023-12-03 17:30');
+CALL p_book_individual_lesson('19901211-2222', 'clarinet',  'beginner',  '2023-12-25 14:10', '2023-12-25 15:10');
+CALL p_book_individual_lesson('19901211-2222', 'saxophone', 'advanced',  '2023-12-08 18:00', '2023-12-08 19:00');
+CALL p_book_individual_lesson('19902001-1112', 'drums', 'intermediate',  '2023-12-20 14:45', '2023-12-20 15:45');
+CALL p_book_individual_lesson('19910222-4441', 'clarinet',  'advanced',  '2023-12-20 14:30', '2023-12-20 15:30');
+CALL p_book_individual_lesson('19951201-3332', 'trumpet', 'intermediate','2023-12-15 15:45', '2023-12-15 16:45');
+CALL p_book_individual_lesson('19951201-3332', 'violin','intermediate',  '2023-12-05 16:20', '2023-12-05 17:20');
 -- populate rentals
 CALL p_rent_an_instrument('19951201-3332', 'trumpet', 'yamaha');
 CALL p_rent_an_instrument('19901001-1111', 'guitar', 'fender');
