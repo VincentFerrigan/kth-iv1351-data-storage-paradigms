@@ -255,7 +255,7 @@ INSER INTO "historical_stored_prices_of_lessons" (
 	inst.name AS "instrument",
 	sl.name AS "skill",
 -- CALL FUNCTION THAT WILL SET CORRECT PRICE!!!
-	-- calculate_price(
+	-- calculate_lesson_price(
     --         s.course_type_id, 
     --         COALESCE(il.instrument_id, gl.instrument_id), 
     --         COALESCE(il.skill_level_id, gl.skill_level_id),
@@ -298,3 +298,17 @@ LEFT JOIN
 WHERE 
     s.start_time < CURRENT_TIMESTAMP;
 
+CREATE OR REPLACE FUNCTION calculate_lesson_price(
+    courseTypeID INT, 
+    instrumentID INT, 
+    skillLevelID INT,
+    startTime    TIMESTAMP
+    studentID    INT
+    ) RETURNS FLOAT4 AS $$
+DECLARE  
+    computed_price;
+BEGIN
+    -- Your calculation logic here
+    RETURN computed_price;
+END;
+$$ LANGUAGE plpgsql;
