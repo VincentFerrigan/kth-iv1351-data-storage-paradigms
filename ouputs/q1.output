@@ -1,0 +1,32 @@
+SELECT * FROM fn_nbr_of_given_lessons_during_given_year(2023)
+
+"Month"	"Total"	"Individual"	"Group"	"Ensemble"
+"Jan"	3	1	2	0
+"Feb"	5	2	3	0
+"Mar"	3	2	1	0
+"Apr"	7	5	0	2
+"May"	2	1	0	1
+"Sep"	2	1	0	1
+"Oct"	2	2	0	0
+"Nov"	2	2	0	0
+"Dec"	4	1	0	3
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Month & Total & Individual & Group & Ensemble \\ \hline
+Jan   & 3     & 1          & 2     & 0        \\
+Feb   & 5     & 2          & 3     & 0        \\
+Mar   & 3     & 2          & 1     & 0        \\
+Apr   & 7     & 5          & 0     & 2        \\
+May   & 2     & 1          & 0     & 1        \\
+Sep   & 2     & 1          & 0     & 1        \\
+Oct   & 2     & 2          & 0     & 0        \\
+Nov   & 2     & 2          & 0     & 0        \\
+Dec   & 4     & 1          & 0     & 3        \\ \hline
+\end{tabular}
+\caption{Monthly Performance Data}
+\label{table:monthly_performance}
+\end{table}
+

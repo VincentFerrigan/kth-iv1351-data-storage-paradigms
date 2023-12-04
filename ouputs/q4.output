@@ -1,0 +1,20 @@
+SELECT * FROM view_ensembles_next_week;
+
+"Day"	"Genre"	"No. of Free Seats"
+"Mon"	"classical"	"Many Seats"
+"Wed"	"classical"	"1 or 2 Seats"
+"Mon"	"rock"	"Many Seats"
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+Day  & Genre     & No. of Free Seats \\ \hline
+Mon  & classical & Many Seats        \\ 
+Wed  & classical & 1 or 2 Seats      \\ 
+Mon  & rock      & Many Seats        \\ \hline
+\end{tabular}
+\caption{Concert Availability}
+\label{table:concert_availability}
+\end{table}
+

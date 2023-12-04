@@ -1,0 +1,22 @@
+SELECT * FROM view_join_sibling_count;
+
+"No. of Siblings"	"No. of Students"
+0	4
+1	14
+2	3
+5	6
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+No. of Siblings & No. of Students \\ \hline
+0               & 4               \\
+1               & 14              \\
+2               & 3               \\
+5               & 6               \\ \hline
+\end{tabular}
+\caption{Siblings and Students}
+\label{table:siblings_students}
+\end{table}
+
