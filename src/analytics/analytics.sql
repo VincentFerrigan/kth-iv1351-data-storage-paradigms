@@ -27,7 +27,7 @@ GROUP BY to_char(s."start_time", 'Mon'), EXTRACT(YEAR FROM s."start_time");
 -- ORDER BY EXTRACT(YEAR FROM s."start_time"), MIN(EXTRACT(MONTH FROM s."start_time"));
 
 -- ## FUNCTION querying/filtering VIEW
---    Show a summary of the number of given lessons per month, filtered by given year, 
+--    Show a summary of the number of lessons given per month during a given year, 
 --    Example: SELECT * FROM fn_nbr_of_given_lessons_during_given_year(2023)
 CREATE OR REPLACE FUNCTION fn_nbr_of_given_lessons_during_given_year(courseYear INT)
 RETURNS TABLE(
@@ -42,32 +42,6 @@ BEGIN
         FROM view_course_type_summary AS v
         WHERE "Year" = courseYear
         ORDER BY (EXTRACT(MONTH FROM TO_DATE(v."Month", 'Mon')));
-END;
-$$ LANGUAGE plpgsql;
-
--- ## FUNCTION - QUERY
---    Show the number of lessons given per month during a given year. 
-CREATE OR REPLACE FUNCTION fn_get_course_summary_by_year(courseYear INT)
-RETURNS TABLE(
-    "Month" TEXT, 
-    "Total" INT, 
-    "Individual" INT, 
-    "Group" INT, 
-    "Ensemble" INT
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        to_char(s."start_time", 'Mon') AS "Month",
-        COUNT(s.id) AS "Total",
-        COUNT(CASE WHEN ct."name" = 'individual' THEN 1 END) AS "Individual",
-        COUNT(CASE WHEN ct."name" = 'group' THEN 1 END) AS "Group",
-        COUNT(CASE WHEN ct."name" = 'ensemble' THEN 1 END) AS "Ensemble"
-    FROM "session" s 
-    JOIN "course_type" ct ON s."course_type_id" = ct."id"
-    WHERE EXTRACT(YEAR FROM s."start_time") = courseYear
-    GROUP BY to_char(s."start_time", 'Mon')
-    ORDER BY MIN(EXTRACT(MONTH FROM s."start_time"));
 END;
 $$ LANGUAGE plpgsql;
 
@@ -97,7 +71,7 @@ JOIN "course_type" ct ON s."course_type_id" = ct."id"
 WHERE s."start_time" < CURRENT_TIMESTAMP
 GROUP BY EXTRACT(YEAR FROM s."start_time"), to_char(s."start_time", 'Mon');
 
-SELECT * from olap_course_type_summary
+-- SELECT * from olap_course_type_summary
 
 --    Query as function
 CREATE OR REPLACE FUNCTION get_olap_summary_for_year(courseYear INT)
@@ -120,7 +94,7 @@ $$ LANGUAGE plpgsql;
 -- # Q2 
 -- ## VIEW
 --    View how many students there are with no sibling, with one sibling, etc...
-CREATE OR REPLACE VIEW view_sibling_counts AS
+CREATE OR REPLACE VIEW view_join_sibling_count AS
 WITH unified_siblings AS (
     SELECT "sibling_1" AS student_id FROM "sibling"
     UNION ALL
@@ -139,10 +113,10 @@ ORDER BY "No. of Siblings";
 
 -- ## Nested VIEW
 -- View how many students there are with no sibling, with one sibling, etc...
-CREATE VIEW view_number_of_siblings AS
-(SELECT nr_siblings, COUNT(*) AS students
+CREATE VIEW view_subquery_sibling_count AS
+(SELECT "No. of Siblings", COUNT(*) AS "No. of Students"
  FROM (
-      SELECT sibling_id, COUNT(*) AS nr_siblings
+      SELECT sibling_id, COUNT(*) AS "No. of Siblings"
       FROM (
            (SELECT sibling_1 AS sibling_id
            FROM sibling)
@@ -151,7 +125,7 @@ CREATE VIEW view_number_of_siblings AS
            FROM sibling)) AS all_siblings
       GROUP BY sibling_id
       ) AS sibling_counts
- GROUP BY nr_siblings)
+ GROUP BY "No. of Siblings")
 
 UNION
 
@@ -160,7 +134,7 @@ UNION
      LEFT JOIN sibling ON (student.id = sibling.sibling_1 OR student.id = sibling.sibling_2)
  WHERE sibling.sibling_1 IS NULL OR sibling.sibling_2 IS NULL)
 
-ORDER BY nr_siblings;
+ORDER BY "No. of Siblings";
 
 -- # Q3
 -- ## FUNCTION - QUERY
@@ -190,35 +164,25 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- # Q4
--- ## FUNCTION - QUERY
---    List all ensembles held during the week ahead
-CREATE OR REPLACE FUNCTION get_ensemble_seats_availability()
-RETURNS TABLE(
-    "Day" TEXT,
-    "Genre" VARCHAR(100),
-    "No. of Free Seats" TEXT
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT to_char(s.start_time, 'Dy') AS "Day",
-           g."name" AS "Genre",
-           CASE
-               WHEN e."max_nr_of_students" - COUNT(sb."student_id") = 0 THEN 'No Seats'
-               WHEN e."max_nr_of_students" - COUNT(sb."student_id") BETWEEN 1 AND 2 THEN '1 or 2 Seats'
-               ELSE 'Many Seats'
-           END AS "No. of Free Seats"
-    FROM "ensemble" AS e
-    JOIN session AS s ON e."session_id" = s."id"
-    JOIN "genre" AS g ON e."genre_id" = g."id"
-    LEFT JOIN student_booking AS sb ON e."session_id" = sb."session_id"
-    WHERE s."start_time" >= CURRENT_DATE
-      AND s."start_time" < CURRENT_DATE + INTERVAL '1 week'
-    GROUP BY s."start_time", g."name", e."max_nr_of_students"
-    ORDER BY g."name", s."start_time";
-END;
-$$ LANGUAGE plpgsql;
-
-SELECT * FROM get_ensemble_seats_availability();
+-- ## VIEW
+--    View all ensembles held during the week ahead
+--  CREATE MATERIALIZED VIEW view_ensembles_next_week AS   ??
+CREATE OR REPLACE VIEW view_ensembles_next_week AS   
+SELECT to_char(s.start_time, 'Dy') AS "Day",
+        g."name" AS "Genre",
+        CASE
+            WHEN e."max_nr_of_students" - COUNT(sb."student_id") = 0 THEN 'No Seats'
+            WHEN e."max_nr_of_students" - COUNT(sb."student_id") BETWEEN 1 AND 2 THEN '1 or 2 Seats'
+            ELSE 'Many Seats'
+        END AS "No. of Free Seats"
+FROM "ensemble" AS e
+JOIN session AS s ON e."session_id" = s."id"
+JOIN "genre" AS g ON e."genre_id" = g."id"
+LEFT JOIN student_booking AS sb ON e."session_id" = sb."session_id"
+WHERE s."start_time" >= CURRENT_DATE
+    AND s."start_time" < CURRENT_DATE + INTERVAL '1 week'
+GROUP BY s."start_time", g."name", e."max_nr_of_students"
+ORDER BY g."name", s."start_time";
 
 -- HG
 -- ## Denormalized data layer for OLAP
