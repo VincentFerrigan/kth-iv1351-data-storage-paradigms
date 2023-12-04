@@ -7,15 +7,9 @@ SELECT EXTRACT(MONTH FROM s.start_time) AS "Month",
        COUNT(e.id) AS "Ensembles"
 
 FROM session AS s
-
-LEFT JOIN individual_lesson AS i_l
-    ON i_l.session_id = s.id
-
-LEFT JOIN group_lesson AS g_l
-    ON g_l.session_id = s.id
-
-LEFT JOIN ensemble AS e
-    ON e.session_id = s.id
+    LEFT JOIN individual_lesson AS i_l ON i_l.session_id = s.id
+    LEFT JOIN group_lesson AS g_l ON g_l.session_id = s.id
+    LEFT JOIN ensemble AS e ON e.session_id = s.id
 
 WHERE EXTRACT(YEAR FROM s.start_time) = '2023'
 
@@ -58,14 +52,14 @@ FROM instructor_booking i_b
     INNER JOIN instructor i ON i_b.instructor_id = i.id
     INNER JOIN person p ON i.person_id = p.id
     INNER JOIN session s ON i_b.session_id = s.id
-WHERE s.start_time >= date_trunc('month', '2023-11-28 20:00:00'::timestamp) --date_trunc('month', CURRENT_DATE) --0 in december
+WHERE s.start_time >= date_trunc('month', CURRENT_DATE)
 
 GROUP BY i.id, p.first_name, p.last_name
 ORDER BY "Given lessons" DESC;
 
 
 --Query 4: View of a ensembles next week
-CREATE VIEW ensembles_next_week AS
+CREATE MATERIALIZED VIEW ensembles_next_week AS
 SELECT to_char(s.start_time, 'Day') AS day_of_week,
        g.name AS genre,
     CASE
