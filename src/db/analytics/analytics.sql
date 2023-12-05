@@ -24,7 +24,6 @@ FROM "session" s
 JOIN "course_type" ct ON s."course_type_id" = ct."id"
 WHERE s."start_time" < CURRENT_TIMESTAMP
 GROUP BY to_char(s."start_time", 'Mon'), EXTRACT(YEAR FROM s."start_time");
--- ORDER BY EXTRACT(YEAR FROM s."start_time"), MIN(EXTRACT(MONTH FROM s."start_time"));
 
 -- ## FUNCTION querying/filtering VIEW
 --    Show a summary of the number of lessons given per month during a given year, 
@@ -196,11 +195,43 @@ CREATE TABLE "historical_stored_prices_of_lessons" (
     "lesson_price" FLOAT4 NOT NULL,
     "student_first_name" VARCHAR(100) NOT NULL,
     "student_last_name" VARCHAR(100) NOT NULL,
-    "Student_email" VARCHAR(100) NOT NULL
-)
+    "student_email" VARCHAR(100) NOT NULL
+);
+
+-- Calculate price
+CREATE OR REPLACE FUNCTION calculate_lesson_price(
+    courseTypeID INT, 
+    instrumentID INT, 
+    skillLevelID INT,
+    startTime    TIMESTAMP,
+    studentID    INT
+    ) RETURNS FLOAT4 AS $$
+DECLARE  
+    computed_price FLOAT4;
+BEGIN
+    -- Find the most specific match
+    SELECT price INTO computed_price
+    FROM lesson_price_list
+    WHERE course_type_id = courseTypeID
+      AND (instrument_id = instrumentID OR instrument_id IS NULL)
+      AND (skill_level_id = skillLevelID OR skill_level_id IS NULL)
+      AND valid_start_time <= startTime
+      AND (valid_end_time IS NULL OR valid_end_time >= startTime)
+      AND (transaction_end_time IS NULL)
+    ORDER BY instrument_id NULLS LAST, skill_level_id NULLS LAST
+    LIMIT 1;
+
+    -- If no price found, you can set a default price or handle it as you see fit
+    IF computed_price IS NULL THEN
+        computed_price := 0; -- or any default handling
+    END IF;
+
+    RETURN computed_price;
+END;
+$$ LANGUAGE plpgsql;
 
 --    Populate table
-INSER INTO "historical_stored_prices_of_lessons" (
+INSERT INTO "historical_stored_prices_of_lessons" (
     "lesson_type",
     "genre",
     "instrument",
@@ -210,33 +241,21 @@ INSER INTO "historical_stored_prices_of_lessons" (
     "student_last_name",
     "student_email"
 )
-
--- Expermienting
--- Should it be stored exactly as they want it outputed or "star schema"
- SELECT
+SELECT
     ct.name AS "lesson",
     gen.name AS "genre",
-	inst.name AS "instrument",
-	sl.name AS "skill",
--- CALL FUNCTION THAT WILL SET CORRECT PRICE!!!
-	-- calculate_lesson_price(
-    --         s.course_type_id, 
-    --         COALESCE(il.instrument_id, gl.instrument_id), 
-    --         COALESCE(il.skill_level_id, gl.skill_level_id),
-    --         s.start_time, -- to check validity
-    --         sb.student_id -- to check discount
-    --         ) AS "lesson_price",
-	p.first_name,
-	p.last_name,
-	p.email,
-    -- -- DEBUGG section of select
-	-- sb.*,
-    -- s.id,
-    -- s.start_time,
-    -- s.course_type_id,
-    -- COALESCE(sb.session_id, il.session_id, gl.session_id, e.session_id) AS session_id,
-    -- COALESCE(il.instrument_id, gl.instrument_id) AS instrument_id,
-    -- COALESCE(il.skill_level_id, gl.skill_level_id) AS skill_level_id
+    inst.name AS "instrument",
+    sl.name AS "skill",
+    calculate_lesson_price(
+        s.course_type_id, 
+        COALESCE(il.instrument_id, gl.instrument_id), 
+        COALESCE(il.skill_level_id, gl.skill_level_id),
+        s.start_time,
+        sb.student_id
+    ) AS "lesson_price",
+    p.first_name,
+    p.last_name,
+    p.email
 FROM 
     "student_booking" AS sb
 LEFT JOIN 
@@ -248,7 +267,7 @@ LEFT JOIN
 LEFT JOIN 
     "ensemble" AS e ON sb.session_id = e.session_id
 LEFT JOIN
-	"course_type" AS ct ON s.course_type_id = ct.id
+    "course_type" AS ct ON s.course_type_id = ct.id
 LEFT JOIN 
     "instrument" AS inst ON inst.id = COALESCE(il.instrument_id, gl.instrument_id)
 LEFT JOIN 
@@ -258,21 +277,6 @@ LEFT JOIN
 LEFT JOIN
     "student" AS student ON student.id = sb.student_id
 LEFT JOIN
-	"person" AS p ON p.id = student.person_id
+    "person" AS p ON p.id = student.person_id
 WHERE 
     s.start_time < CURRENT_TIMESTAMP;
-
-CREATE OR REPLACE FUNCTION calculate_lesson_price(
-    courseTypeID INT, 
-    instrumentID INT, 
-    skillLevelID INT,
-    startTime    TIMESTAMP
-    studentID    INT
-    ) RETURNS FLOAT4 AS $$
-DECLARE  
-    computed_price;
-BEGIN
-    -- Your calculation logic here
-    RETURN computed_price;
-END;
-$$ LANGUAGE plpgsql;
