@@ -82,9 +82,19 @@ when constructing the ''Logical-Physical'' model described in this report.
 % when solving the tasks, or if you worked alone.} 
 
 \section{Literature Study}
-% This chapter must prove that you collected sufficient knowledge before starting
-% development, instead of just hacking away without knowing how to complete a
-% task. State what you have read and briefly summarize what you have learned.
+Both the pre-recorded lectures on
+\href{https://canvas.kth.se/courses/43013/pages/logical-and-physical-models}{logical and physical models},
+given by the course examiner, and the lecture on
+\href{https://canvas.kth.se/courses/43013/pages/normalisation}{normalisation} were reviewed,
+
+Chapters 14, 15 and section 9.1 in the main textbook
+(Fundamentals of Database Systems) as well as chapter 7 in the
+alternative textbook (Database System Concepts) were examined.
+Additionally, the document
+\href{https://canvas.kth.se/courses/43013/files/7096103?wrap=1}{tips-and-tricks-task2.pdf}
+was studied.
+The project group relied on the textbook Databasteknik, written by
+Thomas Pardon-McCartny and Tore Risch to solve the task at hand.
 
 \clearpage
 \section{Method}
@@ -110,9 +120,31 @@ Quick-fixes and editing was, however, done in \emph{Vim}.
 \emph{GIT} and \emph{GitHub} was used for version control.
 
 \subsection*{The overall Work-flow}
+To create a \emph{Logical and Physical Model} out of the
+\emph{Conceptual Model} (designed during the previous assignment),
+the project group performed the following 11 steps:
+\begin{enumerate}
+  \item Made tables of all entities in the conceptual model.
+  \item Turned all single-valued attributes into columns in the tables.
+  \item Handled multi-valued attributes, for example, by turning them into separate tables.
+  \item Assigned column types, such as \texttt{VARCHAR(100)}.
+  \item Added column constraints.
+  \item Created primary keys for strong entities.
+  \item Established all one-to-one and one-to-many relations.
+  \item Created many-to-many relations, for instance, by making cross-reference tables.
+  \item Made primary keys and foreign keys for multi-valued attribute tables.
+  \item Performed normalization.
+  \item Verified that all operations could be performed.
+\end{enumerate}
 
 \pagebreak
 \section{Result}
+The scripts and models for the entire project can be found on GitHub:
+
+\subsubsection*{GitHub-Repo}
+\url{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms}
+
+\subsubsection*{The logical and Physical Model}
 
 % \textbf{This chapter explains \textit{the result} of what you did.}
 
