@@ -2,6 +2,29 @@
 This project is based on assignments for a course in 'Data Storage Paradigms' given at KTH Royal Institute of Technology
 in Stockholm.
 
+This repo contains SQL scripts to create and populate the database used for this project (task 2). 
+It also contains the SQL queries used for task 3.
+
+## How to Create the Database
+
+Follow the steps below to create the database and insert data.
+
+1. Create an empty database, this isn't done by the scripts.
+2. Run the script `./src/db/tables/create_tables_soundgood_db.sql` against the database created above. 
+   This creates the database schema.
+3. Run the script `./src/db/functions/functions.sql` against the database used above, 
+   to create the functions needed for step 4 and 5.
+4. Run the script `./src/db/procedures/procedures.sql` against the database used above, 
+   to create the procedures required for running
+   the script in step 5. 
+5. Run the script `./src/data/populate_tables.sql` against the database used above, which will insert data. 
+
+As an alternative to the steps above, use the script `empdb-from-pg_dump.sql` which creates the empty database, the schema, and also inserts data. This script has been generated with `pg_dump`, and when executed will create a database with exactly the same state as when the script was generated.
+
+## The queries listed in `tips and tricks for project task 3`
+
+The file `queries.sql` contains all queries listed in the document `tips and tricks for project task 3`.
+
 ## Content and learning outcomes
 ### Course contents
 Examples of fields that are treated:
