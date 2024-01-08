@@ -1,0 +1,533 @@
+\documentclass[a4paper]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{lastpage}
+\usepackage{pgf}
+\usepackage{wrapfig}
+\usepackage{fancyvrb}
+\usepackage{fancyhdr}
+
+\usepackage{pdflscape}
+
+\usepackage[font=footnotesize,labelfont=bf,skip=2pt]{caption}
+\usepackage{hyperref}
+
+% Code highligting
+% \usepackage{minted}
+\usepackage[outputdir=output/tex]{minted} % iom min makefile
+
+\newenvironment{longlisting}{\captionsetup{type=listing}}{}
+% \renewcommand\listoflistingscaption{Källkod....}
+\renewcommand\listoflistingscaption{List of source codes}
+\setmintedinline[sql]{breaklines=true,breakanywhere=true} % necessary for breakanywhere to work later on.
+
+\pagestyle{fancy}
+
+% Create header and footer
+\headheight 27pt
+\pagestyle{fancyplain}
+\lhead{\footnotesize{Data Storage Paradigms, IV1351}}
+\chead{\footnotesize{Project Report, Task 3}}
+\rhead{}
+\lfoot{}
+\cfoot{\thepage\ (\pageref{LastPage})}
+\rfoot{}
+
+
+\title{Project Report, Task 3}
+\subtitle{Data Storage Paradigms, IV1351}
+\author{Vincent Ferrigan ferrigan@kth.se}
+\date{\today}
+
+\begin{document}
+\maketitle
+    
+% \section*{Tips for Report Writing}
+% \textbf{REMOVE THIS SECTION BEFORE SUBMITTING THE REPORT.}\\
+
+% \noindent \textit{The target audience has exactly the same skills as the author,
+% except they do not know anything at all about the specific application described
+% in the report.} \\
+
+% Consider the following:
+
+% \begin{itemize}
+%   \item \textbf{The report must be \textit{centered around the requirements}.
+%   Which are they (Introduction), how did you work to meet them (Method), what is
+%   the solution that meets them (Result), and how can you be sure they are met
+%   (Discussion). This is the IMRaD method.} The requirements on the Introduction,
+%   Method, Result and Discussion chapters are described below under each chapter.
+
+%   \item Is spelling and grammar correct? Is spoken language avoided?
+
+%   \item Does the report have a good structure with sections, subsections and
+%   paragraphs?
+
+%   \item Is the text clarified with images and/or other figures, and with links
+%   to the code in your Git repository? Remember that all figures (images, tables,
+%   graphs, code listings, etc) shall be numbered and have a short explaining
+%   text.
+% \end{itemize}
+
+\section{Introduction}
+The assignment involved creating 
+\emph{Online Analytical Processing} (OLAP), \emph{Queries} and \emph{Views} 
+on the Soundgood music school database. 
+The purpose of these queries were to analyze the business and create reports.
+The efficacy of one of the queries was analyzed using EXPLAIN ANALYZE and later
+optimized by using join-operations instead of subqueries. 
+
+The author of this report collaborated with
+\emph{Elin Blomquist}.
+% \textbf{This chapter tells \textit{what} are you going to do.} 
+
+% Explain the task and the requirements on the solution. It's important to clearly
+% state the requirements. \textit{Also specify which other student you worked with
+% when solving the tasks, or if you worked alone.} 
+\subsubsection*{GitHub-Repo}
+\url{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms}
+
+\section{Literature Study}
+% This chapter must prove that you collected sufficient knowledge before starting
+% development, instead of just hacking away without knowing how to complete a
+% task. State what you have read and briefly summarize what you have learned.
+The pre-recorded lecture on SQL, given by 
+Paris Carbone, 
+was reviewed, 
+and chapters related to temporal database concepts and other
+strategies for query processing in the main textbook
+(Fundamentals of Database Systems) was studied. 
+Aspects related to denormalization was briefly studied in the alternative
+textbook (Database System Concepts).
+were examined. 
+
+Additionally, the document 
+\href{https://canvas.kth.se/courses/43013/files/7104569?wrap=1}{tips-and-tricks-task3.pdf}
+was studied.
+Proper syntax related to procedures, functions, and similar topics was acquired
+from both the PostgreSQL official documentation and the PostgreSQL Tutorial
+website.
+
+The project group also relied on the textbook Databasteknik, written by
+Thomas Pardon-McCartny and Tore Risch to solve the task at hand.
+
+\clearpage
+\section{Method}
+\label{sec:method}
+% \textbf{This chapter tells \textit{how} you solved the task.}
+% Explain how you worked when solving the tasks and how you evaluated that your
+% solution met the requirements. \textit{Do not explain your solution and do not
+% refer to code}, that belongs to the \textit{Result} chapter. More specific
+% instructions for the content can be found under each task on the Project page in
+% Canvas.
+
+\subsection*{Tools}
+The project group chose to use PostgreSQL as Database Management System (DMBS).
+This report was also written in plain text mode -- \LaTeX.
+
+All code was written in \emph{Visual Studio Code}.
+Quick-fixes and editing was, however, done in \emph{Vim}. 
+\emph{GIT} and \emph{GitHub} was used for version control.
+
+\subsection*{The overall Work-flow}
+The task at hand required, apart from the tools mentioned above,
+pen and paper.
+All expected output from the queries had to
+initially be determined through manual calculations using the provided
+\href{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms/blob/main/src/data/populate_tables.sql}{dummy data}.
+This preliminary step involved manual computations on paper.
+
+The development of the queries was an iterative process,
+characterized by successive refinements based on continuous evaluations and adjustments
+In other words, ''trail \& error'', constantly revisiting the
+PostgreSQL official documentation (including their Tutorial website).
+
+\pagebreak
+\section{Result}
+\label{sec:result}
+The scripts and models for the entire project can be found on GitHub:
+
+\subsubsection*{GitHub-Repo}
+\url{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms}
+
+\subsection*{Structured layout}
+\label{subsec:struturedlayout}
+
+\begin{itemize}
+    \item \textbf{src/} (Source Scripts)
+    \begin{itemize}
+        \item \textbf{tables/}: Script for table creation.
+        \href{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms/blob/main/src/tables/create_tables_soundgood_db.sql}{create\_tables\_soundgood\_db.sql}
+        \item \textbf{functions/}: Script defining functions.
+        \href{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms/blob/main/src/functions/functions.sql}{functions.sql}
+        \item \textbf{procedures/}: Script for stored procedures.
+        \href{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms/blob/main/src/procedures/procedures.sql}{procedures.sql}
+        \item \textbf{data/}: Scripts for populating tables with data.
+        \href{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms/blob/main/src/data/populate_tables.sql}{populate\_tables.sql}
+        \item \textbf{analytics/:} Scrips for queries and analytics (task 3).
+        \href{https://github.com/VincentFerrigan/kth-iv1351-data-storage-paradigms/blob/main/src/analytics/analytics.sql}{analytics.sql}
+    \end{itemize}
+
+    \item \textbf{diagrams/}
+    \begin{itemize}
+        \item Database schema diagrams and other architectural visuals.
+    \end{itemize}
+
+    \item \textbf{tex/} (Reports)
+    \begin{itemize}
+        \item \LaTeX files the seminar reports.
+    \end{itemize}
+
+    \item \textbf{outputs/} (e.g. EXPLAIN ANALYZE)
+    \begin{itemize}
+        \item Miscellaneous dB ouputs for analysis and manual tests.
+    \end{itemize}
+
+\end{itemize}
+
+%\textbf{Root Directory:}
+%\begin{itemize}
+%  \item Include a \texttt{README.md} for an overview of the project.
+%  \item A \texttt{.gitignore} file for Git version control.
+%\end{itemize}
+
+\subsection*{First Query}
+    Views cannot have parameters, which is a problem when data
+    should be given for a specific year.
+    One approach is to manually filter the data using the
+    WHERE clause in the SELECT queries.
+    Another approach is to use a function.
+    When called with a specific year, the function shown in listing ~\ref{listing:q1_func}, 
+    will return a table
+    summarizing the total number of given lessons, as well as counts for individual,
+    group, and ensemble lessons for each month of that year -- using the data
+    aggregated in the \mintinline{sql}{view_course_type_summary} found in
+    listing ~\ref{listing:q1_view}. 
+    The function essentially
+    provides a yearly breakdown of session types per month.
+
+    The output of this query is to be found in table ~\ref{table:q1}.
+
+\begin{longlisting}
+  \inputminted[
+      label=Q1-Function,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=15,
+      lastline=26,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../src/db/analytics/analytics.sql}
+  \caption{
+    Function for filtering and ordering output-table from view on given year.
+    }
+  \label{listing:q1_func}
+\end{longlisting}
+
+\begin{longlisting}
+  \inputminted[
+      label=Q1-VIEW,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=15,
+      lastline=26,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../src/db/analytics/analytics.sql}
+  \caption{Creating the database view for Query 1}
+  \label{listing:q1_view}
+\end{longlisting}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Month & Total & Individual & Group & Ensemble \\ \hline
+Jan   & 3     & 1          & 2     & 0        \\
+Feb   & 5     & 2          & 3     & 0        \\
+Mar   & 3     & 2          & 1     & 0        \\
+Apr   & 7     & 5          & 0     & 2        \\
+May   & 2     & 1          & 0     & 1        \\
+Sep   & 2     & 1          & 0     & 1        \\
+Oct   & 2     & 2          & 0     & 0        \\
+Nov   & 2     & 2          & 0     & 0        \\
+Dec   & 4     & 1          & 0     & 3        \\ \hline
+\end{tabular}
+\caption{Number of lessons given per moth during 2023. 
+Output generated from the first query}
+\label{table:q1}
+\end{table}
+
+\subsection*{Second Query}
+When it is necessary to retrieve data from multiple tables within a database,
+there exist two primary alternatives: \emph{subqueries} and \emph{joins}.
+Subqueries involve nesting a query within another, whereas join operations
+combine rows from various tables, ''joining'' them through a shared column or a
+specific condition.
+
+The project group chose to use both to solve the second query assignment
+(see figure \ref{listing:q2_view_join} and \ref{listing:q2_view_sub}).
+Their performance were compared
+with \mintinline{sql}{EXPLAIN ANALYSE} (see subsection below). 
+
+\begin{longlisting}
+  \inputminted[
+      label=Q2-VIEW with Join-operations,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=96,
+      lastline=111,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../src/db/analytics/analytics.sql}
+  \caption{Creating the database view for Query 2 with Join-operations}
+  \label{listing:q2_view_join}
+\end{longlisting}
+
+\begin{longlisting}
+  \inputminted[
+      label=Q2-VIEW with Subqueries,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=15,
+      lastline=26,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../src/db/analytics/analytics.sql}
+  \caption{Creating the database view for Query 2 with subqueries}
+  \label{listing:q2_view_sub}
+\end{longlisting}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+No. of Siblings & No. of Students \\ \hline
+0               & 4               \\
+1               & 14              \\
+2               & 3               \\
+5               & 6               \\ \hline
+\end{tabular}
+\caption{Number of students without siblings, one sibling, two etc.
+Output generated from the first query}
+\label{table:q2}
+\end{table}
+
+% Switch to landscape
+\begin{landscape}
+\subsubsection*{EXPLAIN ANALYZE}
+The query plans in listing ~\ref{listing:q2_explain} 
+show how PostgreSQL
+processes the queries, including
+operations like sorting, aggregation, joining, and scanning.
+The metrics provide
+insights into the efficiency of the queries, 
+in terms of both planning and
+execution time. 
+
+\begin{longlisting}
+  \inputminted[
+      label=EXPLAIN ANALYZE,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=1,
+      lastline=78,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../outputs/q2_explain_analyze.output}
+  \caption{Comparing query plans and their performance for query 2}
+  \label{listing:q2_explain}
+\end{longlisting}
+
+\end{landscape}
+% Back to portrait
+
+\clearpage
+\subsection*{Third Query}
+The function
+\mintinline{sql}{fn_get_instructor_lesson_counts_above_threshold}
+in listing \ref{listing:q3}
+is designed to retrieve and display a list of instructors
+who have conducted a number of lessons above the given threshold
+\mintinline{sql}{threshold INT} within the current month.
+
+The output found in table \ref{table:q3},
+was retrieved when calling
+\mintinline{sql}{fn_get_instructor_lesson_counts_above_threshold(2)}.
+
+\begin{longlisting}
+  \inputminted[
+      label=Q3-Function,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=144,
+      lastline=163,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../src/db/analytics/analytics.sql}
+  \caption{
+    Function that
+list instructors who have given more than a specific number of
+lessons during the current month.
+    }
+  \label{listing:q3}
+\end{longlisting}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|l|}
+\hline
+Instructor Id & First name & Last name   & No. of Lessons \\ \hline
+25            & Anna       & Andersson   & 4              \\
+26            & Björn      & Borg        & 4              \\
+27            & Karin      & Karlsson    & 4              \\
+28            & Göran      & Gustafsson  & 3              \\ \hline
+\end{tabular}
+\caption{Instructor Information}
+\label{table:q3}
+\end{table}
+
+\clearpage
+\subsection*{Fourth Query}
+The SQL statement found in listing \ref{listing:q4} creates (or replaces) a view named
+\mintinline{sql}{view_ensembles_next_week}.
+This view is structured to provide information about ensemble sessions scheduled for the upcoming week.
+In essence, this view provides a summary of all ensemble sessions scheduled for the next week,
+including details about the day, genre, and availability of seats.
+(A materialized view was considered -- see subsection \nameref{subsec:materializedview} in the \nameref{sec:discussion} section.)
+
+The output of this view can be found in table \ref{table:q4}.
+
+\begin{longlisting}
+  \inputminted[
+      label=Q4-VIEW,
+      linenos=true,
+      bgcolor=lightgray,
+      firstline=169,
+      lastline=184,
+%        frame=single,
+      fontsize=\footnotesize,
+  ]{sql}{../../src/db/analytics/analytics.sql}
+  \caption{
+    Creates a view that 
+show all ensembles held during the week ahead.
+    }
+  \label{listing:q4}
+\end{longlisting}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+Day  & Genre     & No. of Free Seats \\ \hline
+Mon  & classical & Many Seats        \\ 
+Wed  & classical & 1 or 2 Seats      \\ 
+Mon  & rock      & Many Seats        \\ \hline
+\end{tabular}
+\caption{Concert Availability}
+\label{table:q4}
+\end{table}
+
+\clearpage
+\subsection*{Historical Data and denormalization}
+In listing \ref{listing:hg}, one can find the
+script designed to work with denormalized data layer optimized for OLAP (Online Analytical Processing) purposes.
+It involves creating a table and a function to manage and analyze historical pricing data for lessons.
+\begin{longlisting}
+    \inputminted[
+        label=OLAP,
+        linenos=true,
+        bgcolor=lightgray,
+        firstline=187,
+        lastline=282,
+%        frame=single,
+        fontsize=\footnotesize,
+    ]{sql}{../../src/db/analytics/analytics.sql}
+    \caption{
+        Script for OLAP.
+        It is designed to store historical lesson data,
+        including lesson type, genre, instrument, price, and student details.
+    }
+    \label{listing:hg}
+\end{longlisting}
+
+In summary, this script sets up a system to store and analyze historical lesson pricing data,
+combining information about the lessons and students.
+It is designed for analytical purposes,
+making it easier to review and understand pricing trends over time.
+The approach is denormalized,
+meaning it focuses on reducing the number of joins and simplifying queries at the cost of redundancy, which is typically well-suited for OLAP scenarios.
+
+\section{Discussion}
+\label{sec:discussion}
+\subsection*{Subqueries vs joins}
+As mentioned above, when it is necessary to retrieve data from multiple tables within a database,
+there exist two primary alternatives: \emph{subqueries} and \emph{joins}.
+Subqueries involve nesting a query within another, whereas join operations
+combine rows from various tables, ''joining'' them through a shared column or a
+specific condition.
+
+As one can read from the output from EXPLAIN ANALYZE
+(see listing \ref{listing:q2_explain}),
+the subquery-view is a bit slower.
+It is likely to be slower due to its more complex operations (like
+nested loops and multiple aggregations), potentially less efficient data access
+patterns, and possibly less effective use of indexes.
+The difference in
+execution time might not be significant for small datasets, but as data volume
+increases, these factors can lead to more noticeable performance discrepancies.
+
+\subsection*{The use of functions}
+The project group chose to write a function for the third query.
+According to the assignment, the output should list all instructors who
+'' has given more than a specific number of lessons during the current month''.
+Since neither views nor queries cannot accept parameters in a straight forward manner,
+a function a threshold parameter.
+This function executes a SQL query that joins three tables: session, instructor, and person
+and filters the output accordingly.
+
+\subsection*{Materialized View}
+\label{subsec:materializedview}
+In the context of query 4,
+\mintinline{sql}{view_ensembles_next_week},
+a regular view would ensure that the information about ensemble sessions is always current,
+reflecting any new bookings or changes immediately.
+A materialized view, on the other hand, would provide quicker access to this data,
+especially if the underlying query is complex and the data does not change frequently.
+However, one would need to manage the refreshes to ensure the data isn't too stale,
+especially since it involves upcoming schedules that might change relatively often.
+The choice between the two depends on the specific requirements of the application,
+particularly regarding the balance between the need for up-to-date data and query performance.
+
+For instance, if the application requires real-time accuracy,
+such as in a dynamic booking system where session availability changes frequently,
+a regular view might be more appropriate.
+On the other hand, if the query is resource-intensive and the data changes infrequently or
+if a slight delay in data freshness is acceptable, a materialized view could be more efficient and performant.
+
+\subsection*{Denormalization}
+Denormalization reduces the complexity of queries,
+as data is available in a single table instead of being spread across multiple normalized tables.
+Since the data is stored in a single table, read operations are faster,
+which may be beneficial for generating reports and analytics.
+The biggest advantage in this case is its suitability for historical data.
+Historical data does not require frequent updates and is therefore
+well-suited for denormalization as it minimizes the impact of one of denormalization's primary drawbacks:
+namely the complexity of data updates.
+
+However, denormalization may lead to data duplication,
+with the same information (like lesson prices) repeated across multiple rows.
+It will increase storage space, due to
+data redundancy.
+Denormalized databases can require significantly more storage space.
+As mentioned, its primary drawback is maintenance complexity.
+Any updates or changes
+(though less frequent in historical data) can be more complex,
+as they might need to be applied to multiple instances of the same data.
+
+% \textbf{This chapter \textit{analysis} the result presented in the previous section.}
+
+% Evaluate your solution according to the assessment criteria found in the assessment-criteria documents, which are found under the bullet \textit{In the Discussion chapter of your report...}, under each task on the Project page in Canvas. You do not have to cover all specified criteria.
+
+\end{document}
