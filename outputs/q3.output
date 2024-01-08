@@ -5,7 +5,6 @@ fn_get_instructor_lesson_counts_above_threshold(2)
 26	"Björn"	"Borg"	4
 27	"Karin"	"Karlsson"	4
 28	"Göran"	"Gustafsson"	3
-29	"Petra"	"Petterson"	2
 
 \begin{table}[h]
 \centering
@@ -15,8 +14,7 @@ Instructor Id & First name & Last name   & No. of Lessons \\ \hline
 25            & Anna       & Andersson   & 4              \\
 26            & Björn      & Borg        & 4              \\
 27            & Karin      & Karlsson    & 4              \\
-28            & Göran      & Gustafsson  & 3              \\
-29            & Petra      & Petterson   & 2              \\ \hline
+28            & Göran      & Gustafsson  & 3              \\ \hline
 \end{tabular}
 \caption{Instructor Information}
 \label{table:instructor_information}
